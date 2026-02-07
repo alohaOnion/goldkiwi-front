@@ -684,7 +684,7 @@ export default function Home() {
               <span className="text-2xl font-bold text-white">골드키위</span>
             </div>
             <p className="text-sm text-zinc-500 text-center">
-              © 2024 골드키위. All rights reserved.
+              © 2026 골드키위. All rights reserved.
             </p>
           </div>
         </div>
