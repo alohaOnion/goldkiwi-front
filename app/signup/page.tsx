@@ -14,6 +14,7 @@ import {
   EyeOff,
   Chrome,
   KeyRound,
+  MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -21,6 +22,7 @@ import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import {
   sendVerificationCode,
+  verifySignupCode,
   signupWithVerification,
 } from "@/lib/api/verification";
 import { useCountdown } from "@/lib/hooks/use-countdown";
@@ -28,7 +30,6 @@ import { useCountdown } from "@/lib/hooks/use-countdown";
 export default function SignupPage() {
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
-  const [step, setStep] = useState<"form" | "verify">("form");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,29 +40,50 @@ export default function SignupPage() {
     text: string;
   } | null>(null);
   const [codeSentAt, setCodeSentAt] = useState(0);
+  const [isCodeVerified, setIsCodeVerified] = useState(false);
 
   const showMessage = (type: "success" | "error", text: string) => {
     setMessage({ type, text });
   };
 
   const { formatted: countdownFormatted, isExpired: countdownExpired } =
-    useCountdown(step === "verify", codeSentAt);
+    useCountdown(!!codeSentAt, codeSentAt);
+
+  useEffect(() => {
+    if (countdownExpired) {
+      setIsCodeVerified(false);
+      setVerificationCode("");
+    }
+  }, [countdownExpired]);
 
   useEffect(() => {
     const emailParam = searchParams.get("email");
-    if (emailParam) {
-      setEmail(emailParam);
+    const sentParam = searchParams.get("sent");
+    const usernameParam = searchParams.get("username");
+    const nameParam = searchParams.get("name");
+    if (emailParam) setEmail(emailParam);
+    if (usernameParam) setUsername(usernameParam);
+    if (nameParam) setName(nameParam);
+    if (sentParam) {
+      const sent = parseInt(sentParam, 10);
+      if (!isNaN(sent)) setCodeSentAt(sent);
     }
   }, [searchParams]);
 
   const sendCodeMutation = useMutation({
     mutationFn: () =>
-      sendVerificationCode({ email: email.trim(), purpose: "signup" }),
+      sendVerificationCode({
+        email: email.trim(),
+        purpose: "signup",
+        username: username.trim() || undefined,
+        name: name.trim() || undefined,
+      }),
     onSuccess: () => {
-      setStep("verify");
       setCodeSentAt(Date.now());
+      setVerificationCode("");
+      setIsCodeVerified(false);
       setMessage(null);
-      showMessage("success", "인증 코드가 이메일로 발송되었습니다. (3분간 유효)");
+      showMessage("success", "인증 코드가 이메일로 발송되었습니다.");
     },
     onError: (err: Error & { info?: { message?: string } }) => {
       showMessage(
@@ -84,7 +106,7 @@ export default function SignupPage() {
       setMessage(null);
       showMessage("success", "회원가입이 완료되었습니다. 로그인해주세요.");
       setTimeout(() => {
-        window.location.href = "/login";
+        window.location.href = "/";
       }, 1500);
     },
     onError: (err: Error & { info?: { message?: string } }) => {
@@ -95,7 +117,54 @@ export default function SignupPage() {
     },
   });
 
+  const verifyCodeMutation = useMutation({
+    mutationFn: () =>
+      verifySignupCode({
+        email: email.trim(),
+        code: verificationCode.trim(),
+      }),
+    onSuccess: () => {
+      setIsCodeVerified(true);
+      setMessage(null);
+      showMessage("success", "이메일 인증이 완료되었습니다.");
+    },
+    onError: (err: Error & { info?: { message?: string } }) => {
+      showMessage(
+        "error",
+        err?.info?.message ?? err?.message ?? "인증 코드 확인에 실패했습니다."
+      );
+    },
+  });
+
+  const handleVerifyCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage(null);
+    if (!verificationCode.trim()) {
+      showMessage("error", "인증 코드를 입력해주세요.");
+      return;
+    }
+    if (verificationCode.trim().length !== 6) {
+      showMessage("error", "6자리 인증 코드를 입력해주세요.");
+      return;
+    }
+    if (countdownExpired) {
+      showMessage("error", "인증 코드가 만료되었습니다. 다시 발송해주세요.");
+      return;
+    }
+    verifyCodeMutation.mutate();
+  };
+
   const handleSendCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage(null);
+    if (!email.trim()) {
+      showMessage("error", "이메일을 입력해주세요.");
+      return;
+    }
+    sendCodeMutation.mutate();
+  };
+
+  const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
     if (!username.trim() || !email.trim() || !password.trim() || !name.trim()) {
@@ -106,20 +175,27 @@ export default function SignupPage() {
       showMessage("error", "비밀번호는 최소 8자 이상이어야 합니다.");
       return;
     }
-    sendCodeMutation.mutate();
-  };
-
-  const handleSignup = (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage(null);
+    if (!codeSentAt) {
+      showMessage("error", "먼저 인증 코드를 발송해주세요.");
+      return;
+    }
     if (!verificationCode.trim()) {
       showMessage("error", "인증 코드를 입력해주세요.");
+      return;
+    }
+    if (!isCodeVerified) {
+      showMessage("error", "인증 코드 확인 버튼을 눌러 이메일 인증을 먼저 완료해주세요.");
+      return;
+    }
+    if (countdownExpired) {
+      showMessage("error", "인증 코드가 만료되었습니다. 다시 발송해주세요.");
       return;
     }
     signupMutation.mutate();
   };
 
   const googleLoginUrl = "/api/auth/google";
+  const kakaoLoginUrl = "/api/auth/kakao";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950">
@@ -161,9 +237,7 @@ export default function SignupPage() {
                   회원가입
                 </CardTitle>
                 <p className="text-zinc-400 text-sm">
-                  {step === "form"
-                    ? "이메일 인증 후 가입을 완료합니다"
-                    : "인증 코드를 입력해주세요 (3분 유효)"}
+                  이메일 인증 후 가입을 완료합니다
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -175,108 +249,63 @@ export default function SignupPage() {
                     {message.text}
                   </Alert>
                 )}
-                {step === "form" ? (
-                  <form onSubmit={handleSendCode} className="space-y-5">
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="username"
-                        className="text-sm font-medium text-zinc-300"
-                      >
-                        아이디
-                      </label>
-                      <div className="relative">
-                        <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                        <Input
-                          id="username"
-                          type="text"
-                          placeholder="사용할 아이디를 입력하세요"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
-                          className="pl-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
-                        />
-                      </div>
+                <form onSubmit={handleSignup} className="space-y-5">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="username"
+                      className="text-sm font-medium text-zinc-300"
+                    >
+                      아이디
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+                      <Input
+                        id="username"
+                        type="text"
+                        placeholder="사용할 아이디를 입력하세요"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="pl-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
+                      />
                     </div>
+                  </div>
 
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="email"
-                        className="text-sm font-medium text-zinc-300"
-                      >
-                        이메일
-                      </label>
-                      <div className="relative">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="email"
+                      className="text-sm font-medium text-zinc-300"
+                    >
+                      이메일
+                    </label>
+                    <div className="flex items-end gap-2">
+                      <div className="relative flex-1">
                         <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
                         <Input
                           id="email"
                           type="email"
                           placeholder="이메일을 입력하세요"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          onChange={(e) => {
+                            setEmail(e.target.value);
+                            setCodeSentAt(0);
+                            setVerificationCode("");
+                            setIsCodeVerified(false);
+                          }}
                           className="pl-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
                         />
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="password"
-                        className="text-sm font-medium text-zinc-300"
+                      <Button
+                        type="button"
+                        onClick={handleSendCode}
+                        disabled={sendCodeMutation.isPending || !email.trim()}
+                        className="h-12 shrink-0 bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 hover:text-lime-300 font-semibold"
                       >
-                        비밀번호
-                      </label>
-                      <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                        <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="비밀번호 (최소 8자)"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="pl-12 pr-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-5 w-5" />
-                          ) : (
-                            <Eye className="h-5 w-5" />
-                          )}
-                        </button>
-                      </div>
+                        {sendCodeMutation.isPending ? "발송 중..." : "인증 코드 발송"}
+                      </Button>
                     </div>
+                  </div>
 
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="name"
-                        className="text-sm font-medium text-zinc-300"
-                      >
-                        이름
-                      </label>
-                      <Input
-                        id="name"
-                        type="text"
-                        placeholder="이름을 입력하세요"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={sendCodeMutation.isPending}
-                      className="w-full h-12 bg-gradient-to-r from-lime-400 to-yellow-400 text-black hover:from-lime-500 hover:to-yellow-500 smooth-shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-300 font-semibold"
-                    >
-                      {sendCodeMutation.isPending
-                        ? "발송 중..."
-                        : "인증 코드 발송"}
-                    </Button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleSignup} className="space-y-5">
+                  {codeSentAt > 0 && (
                     <div className="space-y-2">
                       <label
                         htmlFor="verificationCode"
@@ -284,23 +313,50 @@ export default function SignupPage() {
                       >
                         이메일 인증 코드
                       </label>
-                      <div className="relative">
-                        <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                        <Input
-                          id="verificationCode"
-                          type="text"
-                          placeholder="6자리 인증 코드"
-                          value={verificationCode}
-                          onChange={(e) =>
-                            setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+                          <Input
+                            id="verificationCode"
+                            type="text"
+                            placeholder="6자리 인증 코드"
+                            value={verificationCode}
+                            onChange={(e) => {
+                              setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                              setIsCodeVerified(false);
+                            }}
+                            maxLength={6}
+                            disabled={countdownExpired}
+                            className="pl-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20 text-center text-lg tracking-widest disabled:opacity-60"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={
+                            countdownExpired
+                              ? () => sendCodeMutation.mutate()
+                              : handleVerifyCode
                           }
-                          maxLength={6}
-                          className="pl-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20 text-center text-lg tracking-widest"
-                        />
+                          disabled={
+                            countdownExpired
+                              ? sendCodeMutation.isPending
+                              : isCodeVerified ||
+                                verifyCodeMutation.isPending ||
+                                verificationCode.trim().length !== 6
+                          }
+                          className="h-12 shrink-0 bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 hover:text-lime-300 font-semibold px-6 disabled:opacity-100 disabled:bg-lime-400/20"
+                        >
+                          {countdownExpired
+                            ? sendCodeMutation.isPending
+                              ? "발송 중..."
+                              : "재발송"
+                            : isCodeVerified
+                              ? "확인됨"
+                              : verifyCodeMutation.isPending
+                                ? "확인 중..."
+                                : "확인"}
+                        </Button>
                       </div>
-                      <p className="text-xs text-zinc-500">
-                        {email}로 발송된 6자리 코드를 입력하세요
-                      </p>
                       <div className="flex items-center justify-between gap-2">
                         <p
                           className={`text-sm font-mono tabular-nums ${
@@ -311,39 +367,72 @@ export default function SignupPage() {
                             ? "인증 코드가 만료되었습니다."
                             : `유효 시간: ${countdownFormatted}`}
                         </p>
-                        {countdownExpired && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="border-lime-400/50 text-lime-400 hover:bg-lime-400/20 shrink-0"
-                            onClick={() => sendCodeMutation.mutate()}
-                            disabled={sendCodeMutation.isPending}
-                          >
-                            {sendCodeMutation.isPending ? "발송 중..." : "다시 발송"}
-                          </Button>
-                        )}
                       </div>
                     </div>
+                  )}
 
-                    <Button
-                      type="submit"
-                      disabled={signupMutation.isPending || countdownExpired}
-                      className="w-full h-12 bg-gradient-to-r from-lime-400 to-yellow-400 text-black hover:from-lime-500 hover:to-yellow-500 smooth-shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-300 font-semibold"
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="password"
+                      className="text-sm font-medium text-zinc-300"
                     >
-                      {signupMutation.isPending ? "가입 중..." : "회원가입"}
-                    </Button>
+                      비밀번호
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="비밀번호 (최소 8자)"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-12 pr-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="w-full text-zinc-400"
-                      onClick={() => setStep("form")}
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="name"
+                      className="text-sm font-medium text-zinc-300"
                     >
-                      이전으로
-                    </Button>
-                  </form>
-                )}
+                      이름
+                    </label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="이름을 입력하세요"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={
+                      signupMutation.isPending ||
+                      !codeSentAt ||
+                      !verificationCode.trim() ||
+                      !isCodeVerified ||
+                      countdownExpired
+                    }
+                    className="w-full h-12 bg-gradient-to-r from-lime-400 to-yellow-400 text-black hover:from-lime-500 hover:to-yellow-500 smooth-shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-300 font-semibold"
+                  >
+                    {signupMutation.isPending ? "가입 중..." : "회원가입하기"}
+                  </Button>
+                </form>
 
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
@@ -364,6 +453,17 @@ export default function SignupPage() {
                   >
                     <Chrome className="h-5 w-5 mr-2" />
                     Google로 계속하기
+                  </Button>
+                </a>
+
+                <a href={kakaoLoginUrl}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12 border-zinc-800 bg-zinc-900/50 text-white hover:bg-zinc-800 hover:border-zinc-700 bg-[#FEE500] hover:bg-[#FEE500]/90 border-[#FEE500] text-black"
+                  >
+                    <MessageCircle className="h-5 w-5 mr-2" />
+                    카카오로 계속하기
                   </Button>
                 </a>
 

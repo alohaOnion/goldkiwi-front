@@ -95,6 +95,13 @@ export default function MypagePage() {
     useCountdown(emailCodeSent, emailCodeSentAt);
 
   useEffect(() => {
+    if (countdownExpired) {
+      setEmailCodeVerified(false);
+      setVerificationCode("");
+    }
+  }, [countdownExpired]);
+
+  useEffect(() => {
     if (profile) {
       setName(profile.name);
       setUsername(profile.username);
@@ -220,7 +227,8 @@ export default function MypagePage() {
         setEmailCodeSent(true);
         setEmailCodeSentAt(Date.now());
         setEmailCodeVerified(false);
-        setProfileMessage({ type: "success", text: "인증 코드가 이메일로 발송되었습니다. (3분간 유효)" });
+        setVerificationCode("");
+        setProfileMessage({ type: "success", text: "인증 코드가 이메일로 발송되었습니다." });
       },
       onError: (err: Error) => {
         setProfileMessage({ type: "error", text: err.message });
@@ -516,25 +524,36 @@ export default function MypagePage() {
                                   setEmailCodeVerified(false);
                                 }}
                                 maxLength={6}
-                                className="h-10 border-zinc-800 bg-zinc-950/50 text-white w-40 text-center tracking-widest"
+                                disabled={countdownExpired}
+                                className="h-10 border-zinc-800 bg-zinc-950/50 text-white w-40 text-center tracking-widest disabled:opacity-60"
                               />
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
                                 className="shrink-0 bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 hover:text-lime-300 font-semibold"
-                                onClick={handleVerifyEmailCode}
-                                disabled={
-                                  verifyEmailChangeCodeMutation.isPending ||
-                                  verificationCode.length !== 6 ||
+                                onClick={
                                   countdownExpired
+                                    ? handleSendEmailCode
+                                    : handleVerifyEmailCode
+                                }
+                                disabled={
+                                  countdownExpired
+                                    ? sendEmailChangeCodeMutation.isPending
+                                    : verifyEmailChangeCodeMutation.isPending ||
+                                      verificationCode.length !== 6 ||
+                                      emailCodeVerified
                                 }
                               >
-                                {verifyEmailChangeCodeMutation.isPending
-                                  ? "확인 중..."
-                                  : emailCodeVerified
-                                    ? "확인됨"
-                                    : "확인"}
+                                {countdownExpired
+                                  ? sendEmailChangeCodeMutation.isPending
+                                    ? "발송 중..."
+                                    : "재발송"
+                                  : verifyEmailChangeCodeMutation.isPending
+                                    ? "확인 중..."
+                                    : emailCodeVerified
+                                      ? "확인됨"
+                                      : "확인"}
                               </Button>
                             </div>
                             <div className="flex items-center justify-between">
@@ -549,20 +568,6 @@ export default function MypagePage() {
                                   ? "인증 코드가 만료되었습니다."
                                   : `유효 시간: ${countdownFormatted}`}
                               </span>
-                              {countdownExpired && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 hover:text-lime-300 font-semibold"
-                                  onClick={handleSendEmailCode}
-                                  disabled={sendEmailChangeCodeMutation.isPending}
-                                >
-                                  {sendEmailChangeCodeMutation.isPending
-                                    ? "발송 중..."
-                                    : "다시 발송"}
-                                </Button>
-                              )}
                             </div>
                           </div>
                         )}

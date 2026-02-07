@@ -10,6 +10,8 @@ const API_BASE =
 export type SendVerificationPayload = {
   email: string;
   purpose: "signup" | "password_reset";
+  username?: string;
+  name?: string;
 };
 
 export async function sendVerificationCode(
@@ -24,6 +26,33 @@ export async function sendVerificationCode(
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data?.message ?? "인증 코드 발송에 실패했습니다.") as Error & {
+      info?: unknown;
+      status?: number;
+    };
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+export type VerifySignupCodePayload = {
+  email: string;
+  code: string;
+};
+
+export async function verifySignupCode(
+  payload: VerifySignupCodePayload
+): Promise<{ ok: boolean }> {
+  const res = await fetch(`${API_BASE}/auth/verify-signup-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    ...apiFetchOptions,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data?.message ?? "인증 코드 확인에 실패했습니다.") as Error & {
       info?: unknown;
       status?: number;
     };

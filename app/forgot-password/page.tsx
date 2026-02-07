@@ -45,12 +45,21 @@ export default function ForgotPasswordPage() {
     useCountdown(step === "reset", codeSentAt);
 
   useEffect(() => {
+    if (countdownExpired) {
+      setVerificationCode("");
+    }
+  }, [countdownExpired]);
+
+  useEffect(() => {
     const emailParam = searchParams.get("email");
+    const sentParam = searchParams.get("sent");
     if (emailParam) {
       setEmail(emailParam);
       setStep("reset");
-      const sentParam = searchParams.get("sent");
-      setCodeSentAt(sentParam ? parseInt(sentParam, 10) : Date.now());
+    }
+    if (sentParam) {
+      const sent = parseInt(sentParam, 10);
+      if (!isNaN(sent)) setCodeSentAt(sent);
     }
   }, [searchParams]);
 
@@ -61,7 +70,7 @@ export default function ForgotPasswordPage() {
       setStep("reset");
       setCodeSentAt(Date.now());
       setMessage(null);
-      showMessage("success", "인증 코드가 이메일로 발송되었습니다. (3분간 유효)");
+      showMessage("success", "인증 코드가 이메일로 발송되었습니다.");
     },
     onError: (err: Error & { info?: { message?: string } }) => {
       showMessage(
@@ -212,20 +221,34 @@ export default function ForgotPasswordPage() {
                       <label className="text-sm font-medium text-zinc-300">
                         이메일 인증 코드
                       </label>
-                      <div className="relative">
-                        <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                        <Input
-                          type="text"
-                          placeholder="6자리 인증 코드"
-                          value={verificationCode}
-                          onChange={(e) =>
-                            setVerificationCode(
-                              e.target.value.replace(/\D/g, "").slice(0, 6)
-                            )
-                          }
-                          maxLength={6}
-                          className="pl-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20 text-center text-lg tracking-widest"
-                        />
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+                          <Input
+                            type="text"
+                            placeholder="6자리 인증 코드"
+                            value={verificationCode}
+                            onChange={(e) =>
+                              setVerificationCode(
+                                e.target.value.replace(/\D/g, "").slice(0, 6)
+                              )
+                            }
+                            maxLength={6}
+                            disabled={countdownExpired}
+                            className="pl-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20 text-center text-lg tracking-widest disabled:opacity-60"
+                          />
+                        </div>
+                        {countdownExpired && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-12 shrink-0 bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 hover:text-lime-300 font-semibold px-6"
+                            onClick={() => sendCodeMutation.mutate()}
+                            disabled={sendCodeMutation.isPending}
+                          >
+                            {sendCodeMutation.isPending ? "발송 중..." : "재발송"}
+                          </Button>
+                        )}
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <p
@@ -237,18 +260,6 @@ export default function ForgotPasswordPage() {
                             ? "인증 코드가 만료되었습니다."
                             : `유효 시간: ${countdownFormatted}`}
                         </p>
-                        {countdownExpired && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="border-lime-400/50 text-lime-400 hover:bg-lime-400/20 shrink-0"
-                            onClick={() => sendCodeMutation.mutate()}
-                            disabled={sendCodeMutation.isPending}
-                          >
-                            {sendCodeMutation.isPending ? "발송 중..." : "다시 발송"}
-                          </Button>
-                        )}
                       </div>
                     </div>
 
