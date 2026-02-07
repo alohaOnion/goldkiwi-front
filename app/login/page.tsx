@@ -5,15 +5,16 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
 import {
   ShoppingBag,
   ArrowLeft,
-  Mail,
   Lock,
   Eye,
   EyeOff,
   User,
   Chrome,
+  MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -23,16 +24,17 @@ import { apiFetchOptions } from "@/lib/api/config";
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const error = searchParams.get("error");
     if (error) {
-      alert(decodeURIComponent(error));
+      setErrorMessage(decodeURIComponent(error));
       window.history.replaceState({}, "", "/login");
     }
   }, [searchParams]);
-  const [loginType, setLoginType] = useState<"email" | "username">("email");
-  const [emailOrUsername, setEmailOrUsername] = useState("");
+
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const loginMutation = useAuthControllerLogin({
@@ -41,8 +43,7 @@ export default function LoginPage() {
         window.location.href = "/";
       },
       onError: (err: Error & { info?: { message?: string }; status?: number }) => {
-        const msg = err?.info?.message ?? err?.message ?? "로그인에 실패했습니다.";
-        alert(msg);
+        setErrorMessage(err?.info?.message ?? err?.message ?? "로그인에 실패했습니다.");
       },
     },
     fetch: { credentials: "include", ...apiFetchOptions },
@@ -50,11 +51,12 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     const clientId = process.env.NEXT_PUBLIC_CLIENT_ID ?? "goldkiwi-front";
     const clientSecret = process.env.NEXT_PUBLIC_CLIENT_SECRET ?? "goldkiwi-front-secret-dev";
 
-    if (!emailOrUsername.trim() || !password) {
-      alert("이메일(또는 아이디)과 비밀번호를 입력해주세요.");
+    if (!username.trim() || !password) {
+      setErrorMessage("아이디와 비밀번호를 입력해주세요.");
       return;
     }
 
@@ -63,14 +65,13 @@ export default function LoginPage() {
         clientId,
         clientSecret,
         password,
-        ...(loginType === "email"
-          ? { email: emailOrUsername.trim() }
-          : { username: emailOrUsername.trim() }),
+        username: username.trim(),
       },
     });
   };
 
   const googleLoginUrl = "/api/auth/google";
+  const kakaoLoginUrl = "/api/auth/kakao";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950">
@@ -88,9 +89,9 @@ export default function LoginPage() {
               </Button>
             </Link>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-lime-400 to-yellow-400 smooth-shadow-lg shadow-lime-400/20">
+              <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-lime-400 to-yellow-400 smooth-shadow-lg shadow-lime-400/20 hover:opacity-90 transition-opacity">
                 <ShoppingBag className="h-5 w-5 text-black" />
-              </div>
+              </Link>
               <div>
                 <h1 className="text-xl font-bold text-white">골드키위</h1>
               </div>
@@ -117,61 +118,31 @@ export default function LoginPage() {
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
+                {errorMessage && (
+                  <Alert
+                    variant="error"
+                    className="animate-in fade-in slide-in-from-top-2 duration-300"
+                  >
+                    {errorMessage}
+                  </Alert>
+                )}
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* 이메일/아이디 전환 */}
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant={loginType === "email" ? "default" : "outline"}
-                      size="sm"
-                      className={
-                        loginType === "email"
-                          ? "bg-lime-500 hover:bg-lime-600 text-black"
-                          : "border-zinc-700 text-zinc-400"
-                      }
-                      onClick={() => setLoginType("email")}
-                    >
-                      이메일
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={loginType === "username" ? "default" : "outline"}
-                      size="sm"
-                      className={
-                        loginType === "username"
-                          ? "bg-lime-500 hover:bg-lime-600 text-black"
-                          : "border-zinc-700 text-zinc-400"
-                      }
-                      onClick={() => setLoginType("username")}
-                    >
-                      아이디
-                    </Button>
-                  </div>
-
-                  {/* 이메일 또는 아이디 입력 */}
+                  {/* 아이디 입력 */}
                   <div className="space-y-2">
                     <label
-                      htmlFor="emailOrUsername"
+                      htmlFor="username"
                       className="text-sm font-medium text-zinc-300"
                     >
-                      {loginType === "email" ? "이메일" : "아이디"}
+                      아이디
                     </label>
                     <div className="relative">
-                      {loginType === "email" ? (
-                        <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                      ) : (
-                        <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                      )}
+                      <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
                       <Input
-                        id="emailOrUsername"
-                        type={loginType === "email" ? "email" : "text"}
-                        placeholder={
-                          loginType === "email"
-                            ? "이메일을 입력하세요"
-                            : "아이디를 입력하세요"
-                        }
-                        value={emailOrUsername}
-                        onChange={(e) => setEmailOrUsername(e.target.value)}
+                        id="username"
+                        type="text"
+                        placeholder="아이디를 입력하세요"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                         className="pl-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
                       />
                     </div>
@@ -257,6 +228,18 @@ export default function LoginPage() {
                   >
                     <Chrome className="h-5 w-5 mr-2" />
                     Google로 로그인
+                  </Button>
+                </a>
+
+                {/* Kakao 로그인 */}
+                <a href={kakaoLoginUrl}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12 border-zinc-800 bg-zinc-900/50 text-white hover:bg-zinc-800 hover:border-zinc-700 bg-[#FEE500] hover:bg-[#FEE500]/90 border-[#FEE500] text-black"
+                  >
+                    <MessageCircle className="h-5 w-5 mr-2" />
+                    카카오로 로그인
                   </Button>
                 </a>
 

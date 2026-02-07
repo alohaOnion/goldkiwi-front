@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMe } from "@/lib/hooks/use-me";
+import { useProfile } from "@/lib/hooks/use-profile";
 import { useAuthControllerLogout } from "@/lib/api/goldkiwi";
 import { apiFetchOptions } from "@/lib/api/config";
 
@@ -44,6 +45,7 @@ export default function Home() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { data: me, isLoading: isMeLoading } = useMe();
+  const { data: profile } = useProfile(!!me);
   const logoutMutation = useAuthControllerLogout({
     mutation: {
       onSuccess: () => {
@@ -195,9 +197,9 @@ export default function Home() {
         <div className="container mx-auto px-4 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-lime-400 to-yellow-400 smooth-shadow-lg shadow-lime-400/20">
+              <Link href="/" className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-lime-400 to-yellow-400 smooth-shadow-lg shadow-lime-400/20 hover:opacity-90 transition-opacity">
                 <ShoppingBag className="h-6 w-6 text-black" />
-              </div>
+              </Link>
               <div>
                 <h1 className="text-2xl font-bold text-white">골드키위</h1>
                 <p className="text-xs text-zinc-400 font-medium">
@@ -208,9 +210,17 @@ export default function Home() {
             <div className="flex items-center gap-3">
               {me ? (
                 <>
-                  <span className="text-sm font-medium text-zinc-300">
-                    {me.username ?? me.email ?? "사용자"}
-                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="font-medium text-zinc-300 hover:text-white hover:bg-zinc-800"
+                    asChild
+                  >
+                    <Link href="/mypage">
+                      <User className="h-4 w-4 mr-1" />
+                      {profile?.name ?? me.username ?? me.email ?? "사용자"}
+                    </Link>
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
