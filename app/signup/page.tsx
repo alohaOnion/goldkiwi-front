@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,38 +8,31 @@ import {
   ArrowLeft,
   Mail,
   Lock,
+  User,
   Eye,
   EyeOff,
-  User,
   Chrome,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { useAuthControllerLogin } from "@/lib/api/goldkiwi";
+import { useAuthControllerSignup } from "@/lib/api/goldkiwi";
 import { apiFetchOptions } from "@/lib/api/config";
 
-export default function LoginPage() {
-  const searchParams = useSearchParams();
+export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
-
-  useEffect(() => {
-    const error = searchParams.get("error");
-    if (error) {
-      alert(decodeURIComponent(error));
-      window.history.replaceState({}, "", "/login");
-    }
-  }, [searchParams]);
-  const [loginType, setLoginType] = useState<"email" | "username">("email");
-  const [emailOrUsername, setEmailOrUsername] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
 
-  const loginMutation = useAuthControllerLogin({
+  const signupMutation = useAuthControllerSignup({
     mutation: {
       onSuccess: () => {
-        window.location.href = "/";
+        alert("회원가입이 완료되었습니다. 로그인해주세요.");
+        window.location.href = "/login";
       },
       onError: (err: Error & { info?: { message?: string }; status?: number }) => {
-        const msg = err?.info?.message ?? err?.message ?? "로그인에 실패했습니다.";
+        const msg = err?.info?.message ?? err?.message ?? "회원가입에 실패했습니다.";
         alert(msg);
       },
     },
@@ -50,22 +41,20 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID ?? "goldkiwi-front";
-    const clientSecret = process.env.NEXT_PUBLIC_CLIENT_SECRET ?? "goldkiwi-front-secret-dev";
-
-    if (!emailOrUsername.trim() || !password) {
-      alert("이메일(또는 아이디)과 비밀번호를 입력해주세요.");
+    if (!username.trim() || !email.trim() || !password.trim() || !name.trim()) {
+      alert("모든 항목을 입력해주세요.");
       return;
     }
-
-    loginMutation.mutate({
+    if (password.length < 8) {
+      alert("비밀번호는 최소 8자 이상이어야 합니다.");
+      return;
+    }
+    signupMutation.mutate({
       data: {
-        clientId,
-        clientSecret,
+        username: username.trim(),
+        email: email.trim(),
         password,
-        ...(loginType === "email"
-          ? { email: emailOrUsername.trim() }
-          : { username: emailOrUsername.trim() }),
+        name: name.trim(),
       },
     });
   };
@@ -110,74 +99,57 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <CardTitle className="text-3xl font-bold text-white mb-2">
-                  로그인
+                  회원가입
                 </CardTitle>
                 <p className="text-zinc-400 text-sm">
-                  골드키위에 오신 것을 환영합니다
+                  골드키위와 함께 시작하세요
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* 이메일/아이디 전환 */}
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant={loginType === "email" ? "default" : "outline"}
-                      size="sm"
-                      className={
-                        loginType === "email"
-                          ? "bg-lime-500 hover:bg-lime-600 text-black"
-                          : "border-zinc-700 text-zinc-400"
-                      }
-                      onClick={() => setLoginType("email")}
-                    >
-                      이메일
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={loginType === "username" ? "default" : "outline"}
-                      size="sm"
-                      className={
-                        loginType === "username"
-                          ? "bg-lime-500 hover:bg-lime-600 text-black"
-                          : "border-zinc-700 text-zinc-400"
-                      }
-                      onClick={() => setLoginType("username")}
-                    >
-                      아이디
-                    </Button>
-                  </div>
-
-                  {/* 이메일 또는 아이디 입력 */}
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  {/* 아이디 */}
                   <div className="space-y-2">
                     <label
-                      htmlFor="emailOrUsername"
+                      htmlFor="username"
                       className="text-sm font-medium text-zinc-300"
                     >
-                      {loginType === "email" ? "이메일" : "아이디"}
+                      아이디
                     </label>
                     <div className="relative">
-                      {loginType === "email" ? (
-                        <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                      ) : (
-                        <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                      )}
+                      <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
                       <Input
-                        id="emailOrUsername"
-                        type={loginType === "email" ? "email" : "text"}
-                        placeholder={
-                          loginType === "email"
-                            ? "이메일을 입력하세요"
-                            : "아이디를 입력하세요"
-                        }
-                        value={emailOrUsername}
-                        onChange={(e) => setEmailOrUsername(e.target.value)}
+                        id="username"
+                        type="text"
+                        placeholder="사용할 아이디를 입력하세요"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                         className="pl-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
                       />
                     </div>
                   </div>
 
-                  {/* 비밀번호 입력 */}
+                  {/* 이메일 */}
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="email"
+                      className="text-sm font-medium text-zinc-300"
+                    >
+                      이메일
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="이메일을 입력하세요"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 비밀번호 */}
                   <div className="space-y-2">
                     <label
                       htmlFor="password"
@@ -190,7 +162,7 @@ export default function LoginPage() {
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="비밀번호를 입력하세요"
+                        placeholder="비밀번호 (최소 8자)"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="pl-12 pr-12 h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
@@ -209,30 +181,31 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  {/* 자동 로그인 & 비밀번호 찾기 */}
-                  <div className="flex items-center justify-between text-sm">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-lime-400 focus:ring-2 focus:ring-lime-400/20 focus:ring-offset-0 focus:ring-offset-zinc-900"
-                      />
-                      <span className="text-zinc-400">자동 로그인</span>
-                    </label>
-                    <Link
-                      href="/forgot-password"
-                      className="text-lime-400 hover:text-lime-300 transition-colors"
+                  {/* 이름 */}
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="name"
+                      className="text-sm font-medium text-zinc-300"
                     >
-                      비밀번호 찾기
-                    </Link>
+                      이름
+                    </label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="이름을 입력하세요"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-12 border-zinc-800 bg-zinc-950/50 text-white placeholder:text-zinc-500 focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/20"
+                    />
                   </div>
 
-                  {/* 로그인 버튼 */}
+                  {/* 회원가입 버튼 */}
                   <Button
                     type="submit"
-                    disabled={loginMutation.isPending}
+                    disabled={signupMutation.isPending}
                     className="w-full h-12 bg-gradient-to-r from-lime-400 to-yellow-400 text-black hover:from-lime-500 hover:to-yellow-500 smooth-shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-300 font-semibold"
                   >
-                    {loginMutation.isPending ? "로그인 중..." : "로그인"}
+                    {signupMutation.isPending ? "가입 중..." : "회원가입"}
                   </Button>
                 </form>
 
@@ -256,45 +229,24 @@ export default function LoginPage() {
                     className="w-full h-12 border-zinc-800 bg-zinc-900/50 text-white hover:bg-zinc-800 hover:border-zinc-700"
                   >
                     <Chrome className="h-5 w-5 mr-2" />
-                    Google로 로그인
+                    Google로 계속하기
                   </Button>
                 </a>
 
-                {/* 회원가입 링크 */}
+                {/* 로그인 링크 */}
                 <div className="text-center pt-4">
                   <p className="text-sm text-zinc-400">
-                    계정이 없으신가요?{" "}
+                    이미 계정이 있으신가요?{" "}
                     <Link
-                      href="/signup"
+                      href="/login"
                       className="text-lime-400 hover:text-lime-300 font-semibold transition-colors"
                     >
-                      회원가입
+                      로그인
                     </Link>
                   </p>
                 </div>
               </CardContent>
             </Card>
-
-            {/* 추가 정보 */}
-            <div className="mt-6 text-center">
-              <p className="text-xs text-zinc-500">
-                로그인하시면 골드키위의{" "}
-                <Link
-                  href="/terms"
-                  className="text-zinc-400 hover:text-zinc-300 underline"
-                >
-                  이용약관
-                </Link>
-                과{" "}
-                <Link
-                  href="/privacy"
-                  className="text-zinc-400 hover:text-zinc-300 underline"
-                >
-                  개인정보처리방침
-                </Link>
-                에 동의하는 것으로 간주됩니다.
-              </p>
-            </div>
           </div>
         </div>
       </div>

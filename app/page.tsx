@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,9 +33,39 @@ import {
   Medal,
   Star,
   TrendingUp,
+  LogOut,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMe } from "@/lib/hooks/use-me";
+import { useAuthControllerLogout } from "@/lib/api/goldkiwi";
+import { apiFetchOptions } from "@/lib/api/config";
 
 export default function Home() {
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const { data: me, isLoading: isMeLoading } = useMe();
+  const logoutMutation = useAuthControllerLogout({
+    mutation: {
+      onSuccess: () => {
+        queryClient.removeQueries({ queryKey: ["me"] });
+        window.location.replace("/");
+      },
+    },
+    fetch: { credentials: "include", ...apiFetchOptions },
+  });
+
+  useEffect(() => {
+    if (searchParams.get("login") === "success") {
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+      window.history.replaceState({}, "", "/");
+    }
+  }, [searchParams, queryClient]);
+
+  const handleLogout = () => {
+    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID ?? "goldkiwi-front";
+    const clientSecret = process.env.NEXT_PUBLIC_CLIENT_SECRET ?? "goldkiwi-front-secret-dev";
+    logoutMutation.mutate({ data: { clientId, clientSecret } });
+  };
   const categories = [
     {
       name: "전자제품",
@@ -173,15 +206,39 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                className="font-medium text-zinc-300 hover:text-white hover:bg-zinc-800"
-              >
-                로그인
-              </Button>
-              <Button className="bg-gradient-to-r from-lime-400 to-yellow-400 text-black hover:from-lime-500 hover:to-yellow-500 smooth-shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-300 font-semibold">
-                회원가입
-              </Button>
+              {me ? (
+                <>
+                  <span className="text-sm font-medium text-zinc-300">
+                    {me.username ?? me.email ?? "사용자"}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="font-medium text-zinc-300 hover:text-white hover:bg-zinc-800"
+                    onClick={handleLogout}
+                    disabled={logoutMutation.isPending}
+                  >
+                    <LogOut className="h-4 w-4 mr-1" />
+                    로그아웃
+                  </Button>
+                </>
+              ) : !isMeLoading ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    className="font-medium text-zinc-300 hover:text-white hover:bg-zinc-800"
+                    asChild
+                  >
+                    <Link href="/login">로그인</Link>
+                  </Button>
+                  <Button
+                    className="bg-gradient-to-r from-lime-400 to-yellow-400 text-black hover:from-lime-500 hover:to-yellow-500 smooth-shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-300 font-semibold"
+                    asChild
+                  >
+                    <Link href="/signup">회원가입</Link>
+                  </Button>
+                </>
+              ) : null}
             </div>
           </div>
         </div>

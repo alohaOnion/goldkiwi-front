@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate:api": "orval --config ./orval.config.ts",
+    "export:openapi": "node -e \"var f=require('fs'),p=require('path');var s=p.join(process.cwd(),'../goldkiwi-auth/openapi.json');var d=p.join(process.cwd(),'openapi.json');f.existsSync(s)?(f.copyFileSync(s,d),console.log('복사완료')):console.log('auth에서 npm run export:openapi 실행 후 시도하세요')\""
   },
   "dependencies": {
+    "@tanstack/react-query": "^5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.562.0",
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "orval": "^7.21.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
