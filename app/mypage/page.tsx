@@ -27,6 +27,7 @@ import {
   CreditCard,
   ShoppingCart,
   Heart,
+  Store,
 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,9 +48,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 type Section =
   | "profile"
-  | "security"
-  | "history"
   | "payment"
+  | "sales"
   | "orders"
   | "recent"
   | "wishlist";
@@ -160,7 +160,7 @@ export default function MypagePage() {
   useEffect(() => {
     const sectionParam = searchParams.get("section");
     if (sectionParam === "history") {
-      setActiveSection("history");
+      setActiveSection("profile");
     }
   }, [searchParams]);
 
@@ -382,9 +382,8 @@ export default function MypagePage() {
 
   const navItems: { id: Section; label: string; icon: React.ElementType }[] = [
     { id: "profile", label: "내프로필", icon: User },
-    { id: "security", label: "보안설정", icon: Shield },
-    { id: "history", label: "이력관리", icon: History },
     { id: "payment", label: "결제관리", icon: CreditCard },
+    { id: "sales", label: "판매내역", icon: Store },
     { id: "orders", label: "주문내역", icon: ShoppingCart },
     { id: "recent", label: "최근 본상품", icon: Eye },
     { id: "wishlist", label: "관심내역", icon: Heart },
@@ -710,163 +709,151 @@ export default function MypagePage() {
                           탈퇴하기 (준비 중)
                         </Button>
                       </div>
+
+                      {/* 보안설정 (내프로필 내) */}
+                      <div className="pt-6 mt-6 border-t border-zinc-800">
+                        <h3 className="text-base font-semibold text-lime-400 flex items-center gap-2 mb-4">
+                          <Shield className="h-4 w-4" />
+                          보안설정
+                        </h3>
+                        <div className="flex items-center justify-between py-4 border-b border-zinc-800">
+                          <div>
+                            <p className="text-white font-medium">비밀번호</p>
+                            <p className="text-xs text-zinc-500 mt-1">
+                              {isOAuthUser
+                                ? "비밀번호를 설정하면 이메일/아이디로도 로그인할 수 있습니다."
+                                : "비밀번호를 주기적으로 변경하시면 보안에 도움이 됩니다."}
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 hover:text-lime-300 font-semibold"
+                            onClick={() => setShowPasswordModal(true)}
+                          >
+                            수정
+                          </Button>
+                        </div>
+                        {!isOAuthUser && (
+                          <div className="flex items-center justify-between py-4">
+                            <div>
+                              <p className="text-white font-medium">비밀번호 찾기</p>
+                              <p className="text-xs text-zinc-500 mt-1">
+                                비밀번호를 잊으셨다면 이메일 인증으로 재설정할 수 있습니다.
+                              </p>
+                            </div>
+                            <Link href="/forgot-password">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 hover:text-lime-300 font-semibold"
+                              >
+                                비밀번호 찾기
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 이력관리 (내프로필 내) */}
+                      <div className="pt-6 mt-6 border-t border-zinc-800">
+                        <h3 className="text-base font-semibold text-lime-400 flex items-center gap-2 mb-4">
+                          <History className="h-4 w-4" />
+                          이력관리
+                        </h3>
+                        <div className="mb-6">
+                          <p className="text-white font-medium mb-1">로그인 목록</p>
+                          <p className="text-xs text-zinc-500 mb-4">
+                            로그인한 IP와 시간 기록
+                          </p>
+                          <Link href="/mypage/login-history">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 font-semibold"
+                            >
+                              전체 보기
+                            </Button>
+                          </Link>
+                        </div>
+                        <div className="space-y-0 mb-6">
+                          {isLoginHistoryLoading ? (
+                            <HistoryListSkeleton count={3} />
+                          ) : loginHistory && loginHistory.length > 0 ? (
+                            loginHistory.slice(0, 3).map((log) => (
+                              <div
+                                key={log.id}
+                                className="flex items-center justify-between py-3 border-b border-zinc-800 last:border-0"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-800">
+                                    <History className="h-4 w-4 text-zinc-400" />
+                                  </div>
+                                  <div>
+                                    <p className="text-white font-medium text-sm">
+                                      {log.ip ?? "-"}
+                                    </p>
+                                    <p className="text-xs text-zinc-500">
+                                      {formatActivityDate(log.createdAt)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-zinc-500 text-sm py-4 text-center">
+                              로그인 이력이 없습니다.
+                            </p>
+                          )}
+                        </div>
+                        <div className="mb-6">
+                          <p className="text-white font-medium mb-1">내 활동 기록</p>
+                          <p className="text-xs text-zinc-500 mb-4">
+                            로그인, 프로필 수정, 비밀번호 변경 등 계정 활동 내역
+                          </p>
+                          <Link href="/mypage/activities">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 font-semibold"
+                            >
+                              전체 보기
+                            </Button>
+                          </Link>
+                        </div>
+                        <div className="space-y-0">
+                          {isActivitiesLoading ? (
+                            <HistoryListSkeleton count={3} />
+                          ) : activities && activities.length > 0 ? (
+                            activities.slice(0, 3).map((activity) => (
+                              <div
+                                key={activity.id}
+                                className="flex items-center justify-between py-3 border-b border-zinc-800 last:border-0"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-800">
+                                    <History className="h-4 w-4 text-zinc-400" />
+                                  </div>
+                                  <div>
+                                    <p className="text-white font-medium text-sm">
+                                      {activity.description ?? activity.type}
+                                    </p>
+                                    <p className="text-xs text-zinc-500">
+                                      {formatActivityDate(activity.createdAt)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-zinc-500 text-sm py-8 text-center">
+                              아직 활동 기록이 없습니다.
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </>
                   )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* 보안설정 섹션 */}
-            {activeSection === "security" && (
-              <Card className="border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm mb-6">
-                <CardHeader className="border-b border-zinc-800">
-                  <CardTitle className="text-lg font-bold text-lime-400 flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    보안설정
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between py-4 border-b border-zinc-800">
-                    <div>
-                      <p className="text-white font-medium">비밀번호</p>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        {isOAuthUser
-                          ? "비밀번호를 설정하면 이메일/아이디로도 로그인할 수 있습니다."
-                          : "비밀번호를 주기적으로 변경하시면 보안에 도움이 됩니다."}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 hover:text-lime-300 font-semibold"
-                      onClick={() => setShowPasswordModal(true)}
-                    >
-                      수정
-                    </Button>
-                  </div>
-                  {!isOAuthUser && (
-                    <div className="flex items-center justify-between py-4">
-                      <div>
-                        <p className="text-white font-medium">비밀번호 찾기</p>
-                        <p className="text-xs text-zinc-500 mt-1">
-                          비밀번호를 잊으셨다면 이메일 인증으로 재설정할 수 있습니다.
-                        </p>
-                      </div>
-                      <Link href="/forgot-password">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 hover:text-lime-300 font-semibold"
-                        >
-                          비밀번호 찾기
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* 이력관리 섹션 */}
-            {activeSection === "history" && (
-              <Card className="border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm mb-6">
-                <CardHeader className="border-b border-zinc-800">
-                  <CardTitle className="text-lg font-bold text-lime-400 flex items-center gap-2">
-                    <History className="h-5 w-5" />
-                    이력관리
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="mb-6">
-                    <p className="text-white font-medium mb-1">로그인 목록</p>
-                    <p className="text-xs text-zinc-500 mb-4">
-                      로그인한 IP와 시간 기록
-                    </p>
-                    <Link href="/mypage/login-history">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 font-semibold"
-                      >
-                        전체 보기
-                      </Button>
-                    </Link>
-                  </div>
-                  <div className="space-y-0 mb-6">
-                    {isLoginHistoryLoading ? (
-                      <HistoryListSkeleton count={3} />
-                    ) : loginHistory && loginHistory.length > 0 ? (
-                      loginHistory.slice(0, 3).map((log) => (
-                        <div
-                          key={log.id}
-                          className="flex items-center justify-between py-3 border-b border-zinc-800 last:border-0"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-800">
-                              <History className="h-4 w-4 text-zinc-400" />
-                            </div>
-                            <div>
-                              <p className="text-white font-medium text-sm">
-                                {log.ip ?? "-"}
-                              </p>
-                              <p className="text-xs text-zinc-500">
-                                {formatActivityDate(log.createdAt)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-zinc-500 text-sm py-4 text-center">
-                        로그인 이력이 없습니다.
-                      </p>
-                    )}
-                  </div>
-                  <div className="mb-6">
-                    <p className="text-white font-medium mb-1">내 활동 기록</p>
-                    <p className="text-xs text-zinc-500 mb-4">
-                      로그인, 프로필 수정, 비밀번호 변경 등 계정 활동 내역
-                    </p>
-                    <Link href="/mypage/activities">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-lime-400/20 border-lime-400/50 text-lime-400 hover:bg-lime-400/30 font-semibold"
-                      >
-                        전체 보기
-                      </Button>
-                    </Link>
-                  </div>
-                  <div className="space-y-0">
-                    {isActivitiesLoading ? (
-                      <HistoryListSkeleton count={3} />
-                    ) : activities && activities.length > 0 ? (
-                      activities.slice(0, 3).map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="flex items-center justify-between py-3 border-b border-zinc-800 last:border-0"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-800">
-                              <History className="h-4 w-4 text-zinc-400" />
-                            </div>
-                            <div>
-                              <p className="text-white font-medium text-sm">
-                                {activity.description ?? activity.type}
-                              </p>
-                              <p className="text-xs text-zinc-500">
-                                {formatActivityDate(activity.createdAt)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-zinc-500 text-sm py-8 text-center">
-                        아직 활동 기록이 없습니다.
-                      </p>
-                    )}
-                  </div>
                 </CardContent>
               </Card>
             )}
@@ -877,6 +864,15 @@ export default function MypagePage() {
                 icon={CreditCard}
                 title="결제관리"
                 description="결제 수단 관리 및 결제 내역을 확인할 수 있습니다."
+              />
+            )}
+
+            {/* 판매 내역 섹션 (준비중) */}
+            {activeSection === "sales" && (
+              <ComingSoonSection
+                icon={Store}
+                title="판매내역"
+                description="내가 판매한 상품의 내역을 확인할 수 있습니다."
               />
             )}
 
