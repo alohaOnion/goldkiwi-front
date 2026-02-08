@@ -24,6 +24,9 @@ import {
   EyeOff,
   HelpCircle,
   KeyRound,
+  CreditCard,
+  ShoppingCart,
+  Heart,
 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,7 +45,46 @@ import { useAuthControllerLogout } from "@/lib/api/goldkiwi";
 import { apiFetchOptions } from "@/lib/api/config";
 import { useQueryClient } from "@tanstack/react-query";
 
-type Section = "profile" | "security" | "history";
+type Section =
+  | "profile"
+  | "security"
+  | "history"
+  | "payment"
+  | "orders"
+  | "recent"
+  | "wishlist";
+
+function ComingSoonSection({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Card className="border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm mb-6">
+      <CardHeader className="border-b border-zinc-800">
+        <CardTitle className="text-lg font-bold text-lime-400 flex items-center gap-2">
+          <Icon className="h-5 w-5" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-12 pb-12 text-center">
+        <div className="flex justify-center mb-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-800">
+            <Icon className="h-8 w-8 text-zinc-500" />
+          </div>
+        </div>
+        <p className="text-zinc-400 text-sm mb-2">{description}</p>
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-zinc-800 text-zinc-500">
+          준비중
+        </span>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function MypagePage() {
   const router = useRouter();
@@ -342,6 +384,10 @@ export default function MypagePage() {
     { id: "profile", label: "내프로필", icon: User },
     { id: "security", label: "보안설정", icon: Shield },
     { id: "history", label: "이력관리", icon: History },
+    { id: "payment", label: "결제관리", icon: CreditCard },
+    { id: "orders", label: "주문내역", icon: ShoppingCart },
+    { id: "recent", label: "최근 본상품", icon: Eye },
+    { id: "wishlist", label: "관심내역", icon: Heart },
   ];
 
   return (
@@ -823,6 +869,42 @@ export default function MypagePage() {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* 결제관리 섹션 (준비중) */}
+            {activeSection === "payment" && (
+              <ComingSoonSection
+                icon={CreditCard}
+                title="결제관리"
+                description="결제 수단 관리 및 결제 내역을 확인할 수 있습니다."
+              />
+            )}
+
+            {/* 주문내역 섹션 (준비중) */}
+            {activeSection === "orders" && (
+              <ComingSoonSection
+                icon={ShoppingCart}
+                title="주문내역"
+                description="구매 및 판매 주문 내역을 확인할 수 있습니다."
+              />
+            )}
+
+            {/* 최근 본상품 섹션 (준비중) */}
+            {activeSection === "recent" && (
+              <ComingSoonSection
+                icon={Eye}
+                title="최근 본상품"
+                description="최근 조회한 상품 목록을 확인할 수 있습니다."
+              />
+            )}
+
+            {/* 관심내역 섹션 (준비중) */}
+            {activeSection === "wishlist" && (
+              <ComingSoonSection
+                icon={Heart}
+                title="관심내역"
+                description="찜하거나 관심 등록한 상품 목록을 확인할 수 있습니다."
+              />
             )}
           </main>
         </div>
