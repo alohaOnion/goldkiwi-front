@@ -9,7 +9,7 @@ const API_BASE =
 
 export type SendVerificationPayload = {
   email: string;
-  purpose: "signup" | "password_reset";
+  purpose: "signup" | "password_reset" | "find_username";
   username?: string;
   name?: string;
 };
@@ -111,6 +111,33 @@ export async function resetPassword(
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data?.message ?? "비밀번호 재설정에 실패했습니다.") as Error & {
+      info?: unknown;
+      status?: number;
+    };
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+export type FindUsernamePayload = {
+  email: string;
+  verificationCode: string;
+};
+
+export async function findUsername(
+  payload: FindUsernamePayload
+): Promise<{ username: string }> {
+  const res = await fetch(`${API_BASE}/auth/find-username`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    ...apiFetchOptions,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data?.message ?? "아이디 찾기에 실패했습니다.") as Error & {
       info?: unknown;
       status?: number;
     };

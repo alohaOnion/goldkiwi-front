@@ -180,7 +180,7 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  {/* 자동 로그인 & 비밀번호 찾기 */}
+                  {/* 자동 로그인 & 아이디/비밀번호 찾기 */}
                   <div className="flex items-center justify-between text-sm">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -189,12 +189,21 @@ export default function LoginPage() {
                       />
                       <span className="text-zinc-400">자동 로그인</span>
                     </label>
-                    <Link
-                      href="/forgot-password"
-                      className="text-lime-400 hover:text-lime-300 transition-colors"
-                    >
-                      비밀번호 찾기
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href="/find-username"
+                        className="text-lime-400 hover:text-lime-300 transition-colors"
+                      >
+                        아이디 찾기
+                      </Link>
+                      <span className="text-zinc-600">|</span>
+                      <Link
+                        href="/forgot-password"
+                        className="text-lime-400 hover:text-lime-300 transition-colors"
+                      >
+                        비밀번호 찾기
+                      </Link>
+                    </div>
                   </div>
 
                   {/* 로그인 버튼 */}
