@@ -18,6 +18,7 @@ import {
   MapPin,
   Clock,
   ShoppingBag,
+  Plus,
   Laptop,
   Shirt,
   Sofa,
@@ -40,6 +41,23 @@ import { useMe } from "@/lib/hooks/use-me";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useAuthControllerLogout } from "@/lib/api/goldkiwi";
 import { apiFetchOptions } from "@/lib/api/config";
+import { useProducts } from "@/lib/hooks/use-products";
+
+function formatPrice(n: number) {
+  return n.toLocaleString("ko-KR") + "원";
+}
+
+function formatTimeAgo(iso: string) {
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(diff / 3600000);
+  const day = Math.floor(diff / 86400000);
+  if (m < 60) return `${m}분 전`;
+  if (h < 24) return `${h}시간 전`;
+  if (day < 7) return `${day}일 전`;
+  return d.toLocaleDateString("ko-KR");
+}
 
 export default function Home() {
   const searchParams = useSearchParams();
@@ -107,88 +125,11 @@ export default function Home() {
     },
   ];
 
-  const products = [
-    {
-      id: 1,
-      title: "아이폰 14 Pro Max",
-      price: "850,000원",
-      location: "서울시 강남구",
-      time: "2시간 전",
-      image: "/images/products/product1.jpg",
-      likes: 23,
-      isNew: true,
-    },
-    {
-      id: 2,
-      title: "나이키 운동화",
-      price: "80,000원",
-      location: "서울시 마포구",
-      time: "5시간 전",
-      image: "/images/products/product2.jpg",
-      likes: 15,
-      isNew: false,
-    },
-    {
-      id: 3,
-      title: "맥북 프로 13인치",
-      price: "1,200,000원",
-      location: "서울시 서초구",
-      time: "1일 전",
-      image: "/images/products/product3.jpg",
-      likes: 42,
-      isNew: true,
-    },
-    {
-      id: 4,
-      title: "에어팟 프로 2세대",
-      price: "200,000원",
-      location: "서울시 송파구",
-      time: "3시간 전",
-      image: "/images/products/product4.jpg",
-      likes: 31,
-      isNew: false,
-    },
-    {
-      id: 5,
-      title: "책상 의자",
-      price: "150,000원",
-      location: "서울시 용산구",
-      time: "6시간 전",
-      image: "/images/products/product5.jpg",
-      likes: 8,
-      isNew: false,
-    },
-    {
-      id: 6,
-      title: "자전거",
-      price: "300,000원",
-      location: "서울시 종로구",
-      time: "1일 전",
-      image: "/images/products/product6.jpg",
-      likes: 19,
-      isNew: true,
-    },
-    {
-      id: 7,
-      title: "갤럭시 워치",
-      price: "250,000원",
-      location: "서울시 영등포구",
-      time: "4시간 전",
-      image: "/images/products/product2.jpg",
-      likes: 27,
-      isNew: true,
-    },
-    {
-      id: 8,
-      title: "아이패드 에어",
-      price: "750,000원",
-      location: "서울시 강동구",
-      time: "1일 전",
-      image: "/images/products/product3.jpg",
-      likes: 35,
-      isNew: false,
-    },
-  ];
+  const { data: productsData, isLoading: isProductsLoading } = useProducts({
+    page: 1,
+    limit: 12,
+  });
+  const products = productsData?.items ?? [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950">
@@ -210,6 +151,17 @@ export default function Home() {
             <div className="flex items-center gap-3">
               {me ? (
                 <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="font-medium text-zinc-300 hover:text-white hover:bg-zinc-800"
+                    asChild
+                  >
+                    <Link href="/products/new">
+                      <Plus className="h-4 w-4 mr-1" />
+                      상품등록
+                    </Link>
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -338,23 +290,43 @@ export default function Home() {
               지금 가장 인기 있는 상품들을 만나보세요
             </p>
           </div>
-          <Button
-            variant="ghost"
-            className="text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl"
-          >
-            더보기 →
-          </Button>
+          {me ? (
+            <Button
+              variant="ghost"
+              className="text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl"
+              asChild
+            >
+              <Link href="/products/new">
+                <Plus className="h-4 w-4 mr-1" />
+                상품등록
+              </Link>
+            </Button>
+          ) : null}
+          {productsData?.hasMore ? (
+            <Button
+              variant="ghost"
+              className="text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl"
+              asChild
+            >
+              <Link href="/products">더보기 →</Link>
+            </Button>
+          ) : null}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {products.map((product) => (
-            <Card
-              key={product.id}
-              className="group overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm hover:border-zinc-700 smooth-shadow hover:smooth-shadow-xl hover:-translate-y-2 transition-all duration-500 cursor-pointer rounded-xl"
-            >
-              <div className="relative aspect-square w-full bg-zinc-950 overflow-hidden rounded-t-xl">
-                <img
-                  src={product.image}
-                  alt={product.title}
+          {isProductsLoading ? (
+            <div className="col-span-full text-center py-12 text-zinc-400">
+              로딩 중...
+            </div>
+          ) : (
+            products.map((product) => (
+              <Link key={product.id} href={`/${product.id}`}>
+                <Card
+                  className="group overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm hover:border-zinc-700 smooth-shadow hover:smooth-shadow-xl hover:-translate-y-2 transition-all duration-500 cursor-pointer rounded-xl"
+                >
+                  <div className="relative aspect-square w-full bg-zinc-950 overflow-hidden rounded-t-xl">
+                    <img
+                      src={product.image ?? "/images/products/product1.jpg"}
+                      alt={product.title}
                   className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                 />
                 {product.isNew && (
@@ -378,14 +350,14 @@ export default function Home() {
               </CardHeader>
               <CardContent className="pb-2 px-4">
                 <p className="text-xl font-bold bg-gradient-to-r from-lime-400 to-yellow-400 bg-clip-text text-transparent">
-                  {product.price}
+                  {formatPrice(product.price)}
                 </p>
               </CardContent>
               <CardFooter className="flex items-center justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-800 px-4 pb-4">
                 <div className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 text-zinc-500" />
                   <span className="font-medium text-xs">
-                    {product.location}
+                    {product.location ?? "-"}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -397,12 +369,16 @@ export default function Home() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-zinc-500" />
-                    <span className="text-xs">{product.time}</span>
+                    <span className="text-xs">
+                      {formatTimeAgo(product.createdAt)}
+                    </span>
                   </div>
                 </div>
               </CardFooter>
             </Card>
-          ))}
+          </Link>
+            ))
+          )}
         </div>
       </section>
 
