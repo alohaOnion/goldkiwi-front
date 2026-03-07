@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,7 @@ import { useState } from "react";
 import { useAuthControllerLogin } from "@/lib/api/goldkiwi";
 import { apiFetchOptions } from "@/lib/api/config";
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -291,5 +291,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950 animate-pulse" />}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,7 @@ function ComingSoonSection({
   );
 }
 
-export default function MypagePage() {
+function MypageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -1147,5 +1147,13 @@ export default function MypagePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MypagePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950 animate-pulse" />}>
+      <MypageContent />
+    </Suspense>
   );
 }

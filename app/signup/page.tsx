@@ -17,7 +17,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -27,7 +27,7 @@ import {
 } from "@/lib/api/verification";
 import { useCountdown } from "@/lib/hooks/use-countdown";
 
-export default function SignupPage() {
+function SignupContent() {
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
@@ -484,5 +484,13 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950 animate-pulse" />}>
+      <SignupContent />
+    </Suspense>
   );
 }

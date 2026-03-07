@@ -31,6 +31,9 @@ import type {
   SignupDto
 } from './model';
 
+/** Orval이 void 응답용으로 참조하지만 생성하지 않는 타입 */
+type voidSuccess = Record<string, unknown>;
+
 export const getAppControllerGetHelloUrl = () => {
 
 

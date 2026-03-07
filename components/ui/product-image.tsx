@@ -5,8 +5,9 @@ import { useState } from "react";
 
 const PLACEHOLDER = "/images/products/placeholder.svg";
 
-interface ProductImageProps extends ImgHTMLAttributes<HTMLImageElement> {
-  src: string | null | undefined;
+interface ProductImageProps
+  extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src"> {
+  src?: string | null;
 }
 
 /** 이미지 로드 실패 시 placeholder로 한 번만 fallback */
