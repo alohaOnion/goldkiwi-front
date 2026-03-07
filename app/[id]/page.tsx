@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +17,9 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { useProduct, useRelatedProducts, useDeleteProduct } from "@/lib/hooks/use-products";
+import { getImageSrc } from "@/lib/api/sales";
+import { ProductImage } from "@/components/ui/product-image";
 import { useMe } from "@/lib/hooks/use-me";
 
 function formatPrice(n: number) {
@@ -39,10 +41,10 @@ function formatTimeAgo(iso: string) {
 export default function ProductDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
-  const id = params.id;
+  const { id } = use(params);
   const { data: me } = useMe();
   const { data: product, isLoading, error } = useProduct(id);
   const { data: relatedProducts = [] } = useRelatedProducts(id);
@@ -70,8 +72,8 @@ export default function ProductDetailPage({
   }
 
   const images = product.images?.length
-    ? product.images
-    : ["/images/products/product1.jpg"];
+    ? product.images.map((u) => getImageSrc(u))
+    : ["/images/products/placeholder.svg"];
   const mainImage = images[0];
 
   return (
@@ -131,12 +133,10 @@ export default function ProductDetailPage({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           <div className="space-y-4">
             <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800">
-              <Image
+              <ProductImage
                 src={mainImage}
                 alt={product.title}
-                fill
-                className="object-cover"
-                priority
+                className="h-full w-full object-cover"
               />
             </div>
             <div className="grid grid-cols-4 gap-2">
@@ -145,11 +145,10 @@ export default function ProductDetailPage({
                   key={index}
                   className="relative aspect-square rounded-lg overflow-hidden bg-zinc-900 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition-colors"
                 >
-                  <Image
+                  <ProductImage
                     src={image}
                     alt={`${product.title} ${index + 1}`}
-                    fill
-                    className="object-cover"
+                    className="h-full w-full object-cover"
                   />
                 </div>
               ))}
@@ -285,13 +284,10 @@ export default function ProductDetailPage({
                 <Link key={item.id} href={`/${item.id}`}>
                   <Card className="group overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm hover:border-zinc-700 smooth-shadow hover:smooth-shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer rounded-xl">
                     <div className="relative aspect-square w-full bg-zinc-950 overflow-hidden rounded-t-xl">
-                      <Image
-                        src={
-                          item.image ?? "/images/products/product1.jpg"
-                        }
+                      <ProductImage
+                        src={getImageSrc(item.image)}
                         alt={item.title}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                        className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                       />
                       <Button
                         variant="ghost"

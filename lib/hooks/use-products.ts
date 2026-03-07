@@ -17,6 +17,7 @@ export function useProducts(params?: {
   limit?: number;
   workspaceId?: string;
   categoryId?: string;
+  sortBy?: "popular" | "latest";
 }) {
   return useQuery({
     queryKey: ["products", params],

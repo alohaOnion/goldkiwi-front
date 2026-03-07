@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#27272a"/>
+  <g fill="#52525b" opacity="0.5">
+    <path d="M160 120h80v80h-80z"/>
+    <path d="M120 200h160v20H120z"/>
+    <path d="M120 240h120v20H120z"/>
+    <path d="M120 280h100v20H120z"/>
+  </g>
+  <text x="200" y="200" fill="#71717a" font-size="14" text-anchor="middle" dy=".35em" font-family="sans-serif">tøÀ</text>
+</svg>

@@ -7,6 +7,17 @@ const SALES_API_BASE =
     ? "/api/sales"
     : process.env.NEXT_PUBLIC_SALES_API_URL ?? "http://localhost:3002";
 
+/** 이미지 표시용 URL (전용 프록시 경로 /api/image 사용) */
+export function getImageSrc(url: string | null | undefined): string {
+  const placeholder = "/images/products/placeholder.svg";
+  if (!url) return placeholder;
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("/uploads")) return `/api/image${url}`;
+  if (url.startsWith("/api/sales/uploads")) return `/api/image${url.replace("/api/sales", "")}`;
+  if (url.startsWith("/api/image")) return url;
+  return url;
+}
+
 export const salesApiFetchOptions: RequestInit = {
   credentials: "include",
 };
@@ -96,12 +107,14 @@ export async function fetchProducts(params?: {
   limit?: number;
   workspaceId?: string;
   categoryId?: string;
+  sortBy?: "popular" | "latest";
 }): Promise<ProductListResponse> {
   const search = new URLSearchParams();
   if (params?.page) search.set("page", String(params.page));
   if (params?.limit) search.set("limit", String(params.limit));
   if (params?.workspaceId) search.set("workspaceId", params.workspaceId);
   if (params?.categoryId) search.set("categoryId", params.categoryId);
+  if (params?.sortBy) search.set("sortBy", params.sortBy);
   const qs = search.toString();
   const res = await salesFetch(`/products${qs ? `?${qs}` : ""}`);
   return handleResponse(res);
@@ -138,6 +151,24 @@ export async function updateProduct(
     body: JSON.stringify(body),
   });
   return handleResponse(res);
+}
+
+export async function uploadImage(file: File): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${SALES_API_BASE}/upload`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message ?? "업로드에 실패했습니다.");
+  }
+  const url = data.url as string;
+  return {
+    url: url.startsWith("http") ? url : `/api/image${url}`,
+  };
 }
 
 export async function deleteProduct(id: string): Promise<void> {

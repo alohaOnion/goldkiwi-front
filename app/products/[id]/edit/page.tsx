@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
-import { ArrowLeft, Plus, ShoppingBag, X } from "lucide-react";
+import { ArrowLeft, ImagePlus, Plus, ShoppingBag, X } from "lucide-react";
 import { useProduct, useUpdateProduct } from "@/lib/hooks/use-products";
+import { uploadImage } from "@/lib/api/sales";
 import { useMe } from "@/lib/hooks/use-me";
 
 export default function EditProductPage() {
@@ -32,6 +33,7 @@ export default function EditProductPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -58,6 +60,27 @@ export default function EditProductPage() {
       next[i] = v;
       return next;
     });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    setMessage(null);
+    setUploading(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const { url } = await uploadImage(files[i]);
+        setImageUrls((prev) => [...prev, url]);
+      }
+    } catch (err) {
+      setMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : "업로드에 실패했습니다.",
+      });
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +182,7 @@ export default function EditProductPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {message && (
                 <Alert
-                  variant={message.type === "error" ? "destructive" : "default"}
+                  variant={message.type === "error" ? "error" : "default"}
                   className={
                     message.type === "success"
                       ? "border-lime-500/50 bg-lime-500/10 text-lime-400"
@@ -222,7 +245,11 @@ export default function EditProductPage() {
                   </label>
                   <select
                     value={condition}
-                    onChange={(e) => setCondition(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setCondition(v);
+                      if (v === "중고") setIsNew(false);
+                    }}
                     className="w-full h-10 px-3 rounded-md bg-zinc-900 border border-zinc-800 text-white"
                   >
                     <option value="새상품">새상품</option>
@@ -231,12 +258,17 @@ export default function EditProductPage() {
                   </select>
                 </div>
                 <div className="flex items-end gap-2">
-                  <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
+                  <label
+                    className={`flex items-center gap-2 text-sm cursor-pointer ${
+                      condition === "중고" ? "text-zinc-500 cursor-not-allowed" : "text-zinc-300"
+                    }`}
+                  >
                     <input
                       type="checkbox"
-                      checked={isNew}
+                      checked={condition === "중고" ? false : isNew}
                       onChange={(e) => setIsNew(e.target.checked)}
-                      className="rounded border-zinc-600"
+                      disabled={condition === "중고"}
+                      className="rounded border-zinc-600 disabled:cursor-not-allowed"
                     />
                     신상품 표시
                   </label>
@@ -271,18 +303,34 @@ export default function EditProductPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-zinc-300">
-                    이미지 URL
+                    이미지 (URL 또는 업로드)
                   </label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-zinc-400 hover:text-white"
-                    onClick={addImageUrl}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    추가
-                  </Button>
+                  <div className="flex gap-2">
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jfif,image/png,image/webp,image/gif"
+                        multiple
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        disabled={uploading}
+                      />
+                      <span className="inline-flex items-center justify-center rounded-md text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 h-9 px-3">
+                        <ImagePlus className="h-4 w-4 mr-1" />
+                        {uploading ? "업로드 중..." : "업로드"}
+                      </span>
+                    </label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-zinc-400 hover:text-white"
+                      onClick={addImageUrl}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      URL 추가
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {imageUrls.map((url, i) => (
@@ -323,7 +371,7 @@ export default function EditProductPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1 border-zinc-800 text-zinc-300"
+                  className="flex-1 h-11 border-2 border-zinc-600 bg-zinc-800/60 text-zinc-200 hover:bg-zinc-700 hover:border-zinc-500 hover:text-white font-medium"
                   asChild
                 >
                   <Link href={`/${id}`}>취소</Link>
@@ -331,7 +379,7 @@ export default function EditProductPage() {
                 <Button
                   type="submit"
                   disabled={updateMutation.isPending}
-                  className="flex-1 bg-gradient-to-r from-lime-400 to-yellow-400 text-black hover:from-lime-500 hover:to-yellow-500 font-semibold"
+                  className="flex-1 h-11 bg-gradient-to-r from-lime-400 to-yellow-400 text-black hover:from-lime-500 hover:to-yellow-500 font-semibold"
                 >
                   {updateMutation.isPending ? "수정 중..." : "수정 완료"}
                 </Button>

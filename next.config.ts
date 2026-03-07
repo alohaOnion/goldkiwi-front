@@ -6,6 +6,35 @@ const salesApiUrl =
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  images: {
+    remotePatterns: [
+      {
+        protocol: "http",
+        hostname: "localhost",
+        pathname: "/api/sales/uploads/**",
+      },
+      {
+        protocol: "http",
+        hostname: "127.0.0.1",
+        pathname: "/api/sales/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*",
+        pathname: "/api/sales/uploads/**",
+      },
+      {
+        protocol: "http",
+        hostname: "*",
+        pathname: "/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*",
+        pathname: "/uploads/**",
+      },
+    ],
+  },
   async rewrites() {
     return [
       { source: "/api/sales/:path*", destination: `${salesApiUrl}/:path*` },

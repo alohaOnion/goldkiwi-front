@@ -18,7 +18,6 @@ import {
   MapPin,
   Clock,
   ShoppingBag,
-  Plus,
   Laptop,
   Shirt,
   Sofa,
@@ -34,14 +33,13 @@ import {
   Medal,
   Star,
   TrendingUp,
-  LogOut,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMe } from "@/lib/hooks/use-me";
-import { useProfile } from "@/lib/hooks/use-profile";
-import { useAuthControllerLogout } from "@/lib/api/goldkiwi";
-import { apiFetchOptions } from "@/lib/api/config";
 import { useProducts } from "@/lib/hooks/use-products";
+import { getImageSrc } from "@/lib/api/sales";
+import { ProductImage } from "@/components/ui/product-image";
+import { ProductCardGridSkeleton } from "@/components/ui/list-skeleton";
+import { MainHeader } from "@/components/layout/main-header";
 
 function formatPrice(n: number) {
   return n.toLocaleString("ko-KR") + "원";
@@ -62,17 +60,6 @@ function formatTimeAgo(iso: string) {
 export default function Home() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { data: me, isLoading: isMeLoading } = useMe();
-  const { data: profile } = useProfile(!!me);
-  const logoutMutation = useAuthControllerLogout({
-    mutation: {
-      onSuccess: () => {
-        queryClient.removeQueries({ queryKey: ["me"] });
-        window.location.replace("/");
-      },
-    },
-    fetch: { credentials: "include", ...apiFetchOptions },
-  });
 
   useEffect(() => {
     if (searchParams.get("login") === "success") {
@@ -81,11 +68,6 @@ export default function Home() {
     }
   }, [searchParams, queryClient]);
 
-  const handleLogout = () => {
-    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID ?? "goldkiwi-front";
-    const clientSecret = process.env.NEXT_PUBLIC_CLIENT_SECRET ?? "goldkiwi-front-secret-dev";
-    logoutMutation.mutate({ data: { clientId, clientSecret } });
-  };
   const categories = [
     {
       name: "전자제품",
@@ -127,84 +109,14 @@ export default function Home() {
 
   const { data: productsData, isLoading: isProductsLoading } = useProducts({
     page: 1,
-    limit: 12,
+    limit: 6,
+    sortBy: "popular",
   });
   const products = productsData?.items ?? [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-2xl supports-[backdrop-filter]:bg-zinc-950/60 supports-[backdrop-filter]:backdrop-blur-2xl">
-        <div className="container mx-auto px-4 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/" className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-lime-400 to-yellow-400 smooth-shadow-lg shadow-lime-400/20 hover:opacity-90 transition-opacity">
-                <ShoppingBag className="h-6 w-6 text-black" />
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-white">골드키위</h1>
-                <p className="text-xs text-zinc-400 font-medium">
-                  프리미엄 중고거래
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {me ? (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="font-medium text-zinc-300 hover:text-white hover:bg-zinc-800"
-                    asChild
-                  >
-                    <Link href="/products/new">
-                      <Plus className="h-4 w-4 mr-1" />
-                      상품등록
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="font-medium text-zinc-300 hover:text-white hover:bg-zinc-800"
-                    asChild
-                  >
-                    <Link href="/mypage">
-                      <User className="h-4 w-4 mr-1" />
-                      {profile?.name ?? me.username ?? me.email ?? "사용자"}
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="font-medium text-zinc-300 hover:text-white hover:bg-zinc-800"
-                    onClick={handleLogout}
-                    disabled={logoutMutation.isPending}
-                  >
-                    <LogOut className="h-4 w-4 mr-1" />
-                    로그아웃
-                  </Button>
-                </>
-              ) : !isMeLoading ? (
-                <>
-                  <Button
-                    variant="ghost"
-                    className="font-medium text-zinc-300 hover:text-white hover:bg-zinc-800"
-                    asChild
-                  >
-                    <Link href="/login">로그인</Link>
-                  </Button>
-                  <Button
-                    className="bg-gradient-to-r from-lime-400 to-yellow-400 text-black hover:from-lime-500 hover:to-yellow-500 smooth-shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-300 font-semibold"
-                    asChild
-                  >
-                    <Link href="/signup">회원가입</Link>
-                  </Button>
-                </>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </header>
+      <MainHeader />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16">
@@ -290,32 +202,20 @@ export default function Home() {
               지금 가장 인기 있는 상품들을 만나보세요
             </p>
           </div>
-          {me ? (
-            <Button
-              variant="ghost"
-              className="text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl"
-              asChild
-            >
-              <Link href="/products/new">
-                <Plus className="h-4 w-4 mr-1" />
-                상품등록
-              </Link>
-            </Button>
-          ) : null}
-          {productsData?.hasMore ? (
-            <Button
-              variant="ghost"
-              className="text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl"
-              asChild
-            >
-              <Link href="/products">더보기 →</Link>
-            </Button>
-          ) : null}
+          <Button
+            variant="ghost"
+            className="text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-xl"
+            asChild
+          >
+            <Link href="/products">더 보기 →</Link>
+          </Button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {isProductsLoading ? (
-            <div className="col-span-full text-center py-12 text-zinc-400">
-              로딩 중...
+            <ProductCardGridSkeleton count={6} />
+          ) : products.length === 0 ? (
+            <div className="col-span-full text-center py-16 text-zinc-400">
+              등록된 상품이 존재하지 않습니다.
             </div>
           ) : (
             products.map((product) => (
@@ -324,11 +224,11 @@ export default function Home() {
                   className="group overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm hover:border-zinc-700 smooth-shadow hover:smooth-shadow-xl hover:-translate-y-2 transition-all duration-500 cursor-pointer rounded-xl"
                 >
                   <div className="relative aspect-square w-full bg-zinc-950 overflow-hidden rounded-t-xl">
-                    <img
-                      src={product.image ?? "/images/products/product1.jpg"}
+                    <ProductImage
+                      src={getImageSrc(product.image)}
                       alt={product.title}
-                  className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                />
+                      className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                    />
                 {product.isNew && (
                   <div className="absolute left-3 top-3 px-3 py-1 rounded-full bg-gradient-to-r from-lime-400 to-yellow-400 text-black text-xs font-bold smooth-shadow-lg shadow-lime-400/30">
                     NEW

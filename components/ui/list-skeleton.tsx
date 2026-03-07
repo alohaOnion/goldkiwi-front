@@ -59,6 +59,42 @@ function HistoryListSkeleton({ count = 3 }: { count?: number }) {
   );
 }
 
+function ProductCardSkeleton() {
+  return (
+    <div className="overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm rounded-xl">
+      <Skeleton className="aspect-square w-full rounded-t-xl rounded-b-none" />
+      <div className="p-4 pt-4 space-y-2">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </div>
+      <div className="px-4 pb-2">
+        <Skeleton className="h-6 w-24" />
+      </div>
+      <div className="flex items-center justify-between px-4 pb-4 pt-3 border-t border-zinc-800">
+        <Skeleton className="h-3 w-16" />
+        <div className="flex gap-3">
+          <Skeleton className="h-3 w-8" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductCardGridSkeleton({
+  count = 6,
+}: {
+  count?: number;
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <ProductCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
 function CardListSkeleton({ itemCount = 5 }: { itemCount?: number }) {
   return (
     <div className="space-y-0">
@@ -84,4 +120,6 @@ export {
   HistoryListSkeleton,
   HistoryListItemSkeleton,
   CardListSkeleton,
+  ProductCardSkeleton,
+  ProductCardGridSkeleton,
 };

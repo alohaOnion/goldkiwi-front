@@ -10,9 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Heart, MapPin, Clock, Plus, ArrowLeft } from "lucide-react";
+import { Heart, MapPin, Clock } from "lucide-react";
 import { useProducts } from "@/lib/hooks/use-products";
+import { getImageSrc } from "@/lib/api/sales";
+import { ProductImage } from "@/components/ui/product-image";
 import { useMe } from "@/lib/hooks/use-me";
+import { MainHeader } from "@/components/layout/main-header";
+import { ProductCardGridSkeleton } from "@/components/ui/list-skeleton";
 
 function formatPrice(n: number) {
   return n.toLocaleString("ko-KR") + "원";
@@ -39,34 +43,18 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950">
-      <header className="sticky top-0 z-50 w-full border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-2xl">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-zinc-300 hover:text-white hover:bg-zinc-800"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <h1 className="text-xl font-bold text-white">상품 목록</h1>
-          {me ? (
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/products/new">
-                <Plus className="h-4 w-4 mr-1" />
-                상품등록
-              </Link>
-            </Button>
-          ) : (
-            <div />
-          )}
-        </div>
-      </header>
+      <MainHeader />
 
       <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold mb-2 text-white">상품 목록</h2>
+          <p className="text-zinc-400">
+            전체 상품을 확인해보세요
+          </p>
+        </div>
+
         {isLoading ? (
-          <div className="text-center py-16 text-zinc-400">로딩 중...</div>
+          <ProductCardGridSkeleton count={12} />
         ) : products.length === 0 ? (
           <div className="text-center py-16 text-zinc-400">
             등록된 상품이 없습니다.
@@ -80,26 +68,32 @@ export default function ProductsPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {products.map((product) => (
                 <Link key={product.id} href={`/${product.id}`}>
                   <Card className="group overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm hover:border-zinc-700 smooth-shadow hover:smooth-shadow-xl hover:-translate-y-2 transition-all duration-500 cursor-pointer rounded-xl">
                     <div className="relative aspect-square w-full bg-zinc-950 overflow-hidden rounded-t-xl">
-                      <img
-                        src={
-                          product.image ?? "/images/products/product1.jpg"
-                        }
+                      <ProductImage
+                        src={getImageSrc(product.image)}
                         alt={product.title}
                         className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                       />
                       {product.isNew && (
-                        <div className="absolute left-3 top-3 px-3 py-1 rounded-full bg-gradient-to-r from-lime-400 to-yellow-400 text-black text-xs font-bold">
+                        <div className="absolute left-3 top-3 px-3 py-1 rounded-full bg-gradient-to-r from-lime-400 to-yellow-400 text-black text-xs font-bold smooth-shadow-lg shadow-lime-400/30">
                           NEW
                         </div>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-3 top-3 h-9 w-9 rounded-full bg-zinc-900/80 backdrop-blur-sm hover:bg-zinc-800 smooth-shadow-lg hover:scale-110 transition-all duration-300 border border-zinc-700"
+                      >
+                        <Heart className="h-4 w-4 text-zinc-400 group-hover:fill-lime-400 group-hover:text-lime-400 transition-all" />
+                      </Button>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     </div>
                     <CardHeader className="pb-2 px-4 pt-4">
-                      <CardTitle className="line-clamp-2 text-base font-bold text-white group-hover:text-lime-400 transition-colors">
+                      <CardTitle className="line-clamp-2 text-base font-bold text-white group-hover:text-lime-400 transition-colors duration-300">
                         {product.title}
                       </CardTitle>
                     </CardHeader>
@@ -109,12 +103,25 @@ export default function ProductsPage() {
                       </p>
                     </CardContent>
                     <CardFooter className="flex items-center justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-800 px-4 pb-4">
-                      <span>{product.location ?? "-"}</span>
-                      <div className="flex items-center gap-2">
-                        <Heart className="h-3.5 w-3.5" />
-                        {product.likes}
-                        <Clock className="h-3.5 w-3.5 ml-1" />
-                        {formatTimeAgo(product.createdAt)}
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-zinc-500" />
+                        <span className="font-medium text-xs">
+                          {product.location ?? "-"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                          <Heart className="h-3.5 w-3.5 fill-zinc-600 text-zinc-500" />
+                          <span className="font-semibold text-xs">
+                            {product.likes}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5 text-zinc-500" />
+                          <span className="text-xs">
+                            {formatTimeAgo(product.createdAt)}
+                          </span>
+                        </div>
                       </div>
                     </CardFooter>
                   </Card>
@@ -122,16 +129,7 @@ export default function ProductsPage() {
               ))}
             </div>
             {hasMore && (
-              <div className="mt-8 flex justify-center gap-4">
-                {page > 1 && (
-                  <Button
-                    variant="outline"
-                    className="border-zinc-800 text-zinc-300"
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    이전
-                  </Button>
-                )}
+              <div className="mt-8 text-center">
                 <Button
                   variant="outline"
                   className="border-zinc-800 text-zinc-300"
