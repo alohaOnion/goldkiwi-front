@@ -1,11 +1,11 @@
 "use client";
 
+import type { ImgHTMLAttributes } from "react";
 import { useState } from "react";
 
 const PLACEHOLDER = "/images/products/placeholder.svg";
 
-interface ProductImageProps
-  extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface ProductImageProps extends ImgHTMLAttributes<HTMLImageElement> {
   src: string | null | undefined;
 }
 
