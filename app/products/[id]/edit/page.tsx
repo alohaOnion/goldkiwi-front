@@ -134,7 +134,7 @@ export default function EditProductPage() {
     );
   }
 
-  if (error || product.sellerId !== me?.sub) {
+  if (error || String(product.sellerId) !== String(me?.sub ?? "")) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950 flex items-center justify-center">
         <Card className="border border-zinc-800 bg-zinc-900/50 max-w-md">

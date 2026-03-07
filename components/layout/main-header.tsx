@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { LogOut, Plus, ShoppingBag, User } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMe } from "@/lib/hooks/use-me";
@@ -86,19 +86,25 @@ export function MainHeader() {
               </>
             ) : !isMeLoading ? (
               <>
-                <Button
-                  variant="ghost"
-                  className="font-medium text-zinc-300 hover:text-white hover:bg-zinc-800"
-                  asChild
+                <Link
+                  href="/login"
+                  className={buttonVariants({
+                    variant: "ghost",
+                    className:
+                      "font-medium text-zinc-300 hover:text-white hover:bg-zinc-800",
+                  })}
                 >
-                  <Link href="/login">로그인</Link>
-                </Button>
-                <Button
-                  className="bg-gradient-to-r from-lime-400 to-yellow-400 text-black hover:from-lime-500 hover:to-yellow-500 smooth-shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-300 font-semibold"
-                  asChild
+                  로그인
+                </Link>
+                <Link
+                  href="/signup"
+                  className={buttonVariants({
+                    className:
+                      "!text-black bg-gradient-to-r from-lime-400 to-yellow-400 hover:from-lime-500 hover:to-yellow-500 smooth-shadow-lg shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-300 font-semibold",
+                  })}
                 >
-                  <Link href="/signup">회원가입</Link>
-                </Button>
+                  회원가입
+                </Link>
               </>
             ) : null}
           </div>

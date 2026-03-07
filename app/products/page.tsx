@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,8 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Heart, MapPin, Clock } from "lucide-react";
-import { useProducts } from "@/lib/hooks/use-products";
+import { Input } from "@/components/ui/input";
+import { Heart, MapPin, Clock, Search, X } from "lucide-react";
+import { useProducts, useToggleProductLike, useWishlist } from "@/lib/hooks/use-products";
 import { getImageSrc } from "@/lib/api/sales";
 import { ProductImage } from "@/components/ui/product-image";
 import { useMe } from "@/lib/hooks/use-me";
@@ -36,10 +37,54 @@ function formatTimeAgo(iso: string) {
 
 export default function ProductsPage() {
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const { data: me } = useMe();
-  const { data, isLoading } = useProducts({ page, limit: 12 });
+  const { data: wishlist = [] } = useWishlist(!!me);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const toggleLikeMutation = useToggleProductLike();
+
+  useEffect(() => {
+    setLikedIds(new Set((wishlist ?? []).map((p) => p.id)));
+  }, [wishlist]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const toggleLike = (productId: string) => {
+    if (me) {
+      toggleLikeMutation.mutate(productId, {
+        onSuccess: (data) => {
+          setLikedIds((prev) => {
+            const next = new Set(prev);
+            if (data.liked) next.add(productId);
+            else next.delete(productId);
+            return next;
+          });
+        },
+      });
+    } else {
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(productId)) next.delete(productId);
+        else next.add(productId);
+        return next;
+      });
+    }
+  };
+  const { data, isLoading } = useProducts({
+    page,
+    limit: 12,
+    q: search || undefined,
+  });
   const products = data?.items ?? [];
   const hasMore = data?.hasMore ?? false;
+  const hasSearch = !!search;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950">
@@ -48,16 +93,38 @@ export default function ProductsPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2 text-white">상품 목록</h2>
-          <p className="text-zinc-400">
+          <p className="text-zinc-400 mb-6">
             전체 상품을 확인해보세요
           </p>
+
+          <div className="relative max-w-xl mx-auto">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-500 pointer-events-none" />
+            <Input
+              type="search"
+              placeholder="상품명, 설명으로 검색..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-12 pr-12 h-12 rounded-xl border-zinc-800 bg-zinc-900/80 text-white placeholder:text-zinc-500 focus-visible:ring-lime-400/50 focus-visible:border-lime-400/50 focus-visible:bg-zinc-900 transition-all duration-200"
+              aria-label="상품 검색"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
+                aria-label="검색어 지우기"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
           <ProductCardGridSkeleton count={12} />
         ) : products.length === 0 ? (
           <div className="text-center py-16 text-zinc-400">
-            등록된 상품이 없습니다.
+            {hasSearch ? "검색 결과가 없습니다." : "등록된 상품이 없습니다."}
             {me && (
               <div className="mt-4">
                 <Button asChild>
@@ -72,7 +139,7 @@ export default function ProductsPage() {
               {products.map((product) => (
                 <Link key={product.id} href={`/${product.id}`}>
                   <Card className="group overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm hover:border-zinc-700 smooth-shadow hover:smooth-shadow-xl hover:-translate-y-2 transition-all duration-500 cursor-pointer rounded-xl">
-                    <div className="relative aspect-square w-full bg-zinc-950 overflow-hidden rounded-t-xl">
+                    <div className="relative aspect-[4/3] w-full bg-zinc-950 overflow-hidden rounded-t-xl">
                       <ProductImage
                         src={getImageSrc(product.image)}
                         alt={product.title}
@@ -84,11 +151,23 @@ export default function ProductsPage() {
                         </div>
                       )}
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-3 top-3 h-9 w-9 rounded-full bg-zinc-900/80 backdrop-blur-sm hover:bg-zinc-800 smooth-shadow-lg hover:scale-110 transition-all duration-300 border border-zinc-700"
+                        className="absolute right-3 top-3 h-9 w-9 rounded-full bg-zinc-900/80 backdrop-blur-sm hover:bg-zinc-800 smooth-shadow-lg hover:scale-110 transition-all duration-300 border border-zinc-700 z-10"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleLike(product.id);
+                        }}
                       >
-                        <Heart className="h-4 w-4 text-zinc-400 group-hover:fill-lime-400 group-hover:text-lime-400 transition-all" />
+                        <Heart
+                          className={`h-4 w-4 transition-all ${
+                            likedIds.has(product.id)
+                              ? "fill-lime-400 text-lime-400"
+                              : "text-zinc-400 group-hover:fill-lime-400 group-hover:text-lime-400"
+                          }`}
+                        />
                       </Button>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     </div>

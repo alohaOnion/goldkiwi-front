@@ -8,6 +8,10 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  recordProductView,
+  toggleProductLike,
+  fetchRecentViews,
+  fetchWishlist,
   type CreateProductBody,
   type UpdateProductBody,
 } from "@/lib/api/sales";
@@ -18,6 +22,7 @@ export function useProducts(params?: {
   workspaceId?: string;
   categoryId?: string;
   sortBy?: "popular" | "latest";
+  q?: string;
 }) {
   return useQuery({
     queryKey: ["products", params],
@@ -69,5 +74,39 @@ export function useDeleteProduct() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
     },
+  });
+}
+
+export function useRecordProductView() {
+  return useMutation({
+    mutationFn: (id: string) => recordProductView(id),
+  });
+}
+
+export function useToggleProductLike() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => toggleProductLike(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["account", "wishlist"] });
+    },
+  });
+}
+
+export function useRecentViews(enabled = true) {
+  return useQuery({
+    queryKey: ["account", "recent-views"],
+    queryFn: fetchRecentViews,
+    enabled,
+  });
+}
+
+export function useWishlist(enabled = true) {
+  return useQuery({
+    queryKey: ["account", "wishlist"],
+    queryFn: fetchWishlist,
+    enabled,
   });
 }

@@ -38,6 +38,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       { source: "/api/sales/:path*", destination: `${salesApiUrl}/:path*` },
+      { source: "/api/image/:path*", destination: `${salesApiUrl}/:path*` }, // 이미지는 sales 업로드 서버로
       { source: "/api/:path*", destination: `${apiUrl}/:path*` },
     ];
   },

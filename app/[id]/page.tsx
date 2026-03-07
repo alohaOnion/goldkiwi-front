@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,8 @@ import {
   Clock,
   ShoppingBag,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Share2,
   MessageCircle,
   Eye,
@@ -17,7 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useProduct, useRelatedProducts, useDeleteProduct } from "@/lib/hooks/use-products";
+import { useProduct, useRelatedProducts, useDeleteProduct, useRecordProductView, useToggleProductLike, useWishlist } from "@/lib/hooks/use-products";
 import { getImageSrc } from "@/lib/api/sales";
 import { ProductImage } from "@/components/ui/product-image";
 import { useMe } from "@/lib/hooks/use-me";
@@ -25,6 +27,8 @@ import { useMe } from "@/lib/hooks/use-me";
 function formatPrice(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
+
+const EMPTY_WISHLIST: { id: string }[] = [];
 
 function formatTimeAgo(iso: string) {
   const d = new Date(iso);
@@ -48,9 +52,34 @@ export default function ProductDetailPage({
   const { data: me } = useMe();
   const { data: product, isLoading, error } = useProduct(id);
   const { data: relatedProducts = [] } = useRelatedProducts(id);
+  const { data: wishlist } = useWishlist(!!me);
   const deleteMutation = useDeleteProduct();
+  const recordViewMutation = useRecordProductView();
+  const toggleLikeMutation = useToggleProductLike();
 
-  const isSeller = me && product && product.sellerId === me.sub;
+  const images =
+    product?.images?.length && product.images.length > 0
+      ? product.images.map((u) => getImageSrc(u))
+      : ["/images/products/placeholder.svg"];
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const wishlistData = wishlist ?? EMPTY_WISHLIST;
+  const wishlistIds = new Set(wishlistData.map((p) => p.id));
+  const [likedIds, setLikedIds] = useState<Set<string>>(wishlistIds);
+
+  useEffect(() => {
+    setLikedIds(new Set(wishlistData.map((p) => p.id)));
+  }, [wishlistData]);
+
+  useEffect(() => {
+    if (me && product) {
+      recordViewMutation.mutate(id);
+    }
+  }, [me, product, id]);
+
+  const isSeller =
+    me &&
+    product &&
+    String(product.sellerId) === String(me.sub);
 
   const handleDelete = () => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
@@ -60,6 +89,8 @@ export default function ProductDetailPage({
         alert(err?.info?.message ?? err?.message ?? "삭제에 실패했습니다."),
     });
   };
+
+  const mainImage = images[selectedIndex] ?? images[0];
 
   if (isLoading || !product) {
     return (
@@ -71,17 +102,40 @@ export default function ProductDetailPage({
     );
   }
 
-  const images = product.images?.length
-    ? product.images.map((u) => getImageSrc(u))
-    : ["/images/products/placeholder.svg"];
-  const mainImage = images[0];
+  const toggleLike = async (productId: string) => {
+    if (me) {
+      toggleLikeMutation.mutate(productId, {
+        onSuccess: (data) => {
+          setLikedIds((prev) => {
+            const next = new Set(prev);
+            if (data.liked) next.add(productId);
+            else next.delete(productId);
+            return next;
+          });
+        },
+      });
+    } else {
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(productId)) next.delete(productId);
+        else next.add(productId);
+        return next;
+      });
+    }
+  };
+  const hasMultipleImages = images.length > 1;
+
+  const goPrev = () =>
+    setSelectedIndex((i) => (i <= 0 ? images.length - 1 : i - 1));
+  const goNext = () =>
+    setSelectedIndex((i) => (i >= images.length - 1 ? 0 : i + 1));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-black to-zinc-950">
       <header className="sticky top-0 z-50 w-full border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-2xl">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Link href="/">
+            <Link href="/products">
               <Button
                 variant="ghost"
                 size="icon"
@@ -93,21 +147,20 @@ export default function ProductDetailPage({
             <div className="flex-1" />
             {isSeller && (
               <>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href={`/products/${id}/edit`}>
-                    <Edit3 className="h-4 w-4 mr-1" />
-                    수정
+                <Button variant="ghost" size="icon" asChild className="text-zinc-300 hover:text-white hover:bg-zinc-800">
+                  <Link href={`/products/${id}/edit`} aria-label="수정">
+                    <Edit3 className="h-5 w-5" />
                   </Link>
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                   onClick={handleDelete}
                   disabled={deleteMutation.isPending}
+                  aria-label="삭제"
                 >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  삭제
+                  <Trash2 className="h-5 w-5" />
                 </Button>
               </>
             )}
@@ -119,43 +172,76 @@ export default function ProductDetailPage({
               <Share2 className="h-5 w-5" />
             </Button>
             <Button
+              type="button"
               variant="ghost"
               size="icon"
-              className="text-zinc-300 hover:text-white hover:bg-zinc-800"
+              className={`transition-colors ${
+                likedIds.has(id)
+                  ? "text-lime-400 hover:text-lime-300 hover:bg-zinc-800"
+                  : "text-zinc-300 hover:text-white hover:bg-zinc-800"
+              }`}
+              onClick={() => toggleLike(id)}
+              aria-label="좋아요"
             >
-              <Heart className="h-5 w-5" />
+              <Heart
+                className={`h-5 w-5 ${likedIds.has(id) ? "fill-lime-400" : ""}`}
+              />
             </Button>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          <div className="space-y-4">
-            <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800">
+        <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[auto_auto] gap-x-8 gap-y-6 mb-12">
+          <div className="lg:row-start-1">
+            <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 group">
               <ProductImage
                 src={mainImage}
                 alt={product.title}
                 className="h-full w-full object-cover"
               />
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {images.slice(0, 4).map((image, index) => (
-                <div
-                  key={index}
-                  className="relative aspect-square rounded-lg overflow-hidden bg-zinc-900 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition-colors"
-                >
-                  <ProductImage
-                    src={image}
-                    alt={`${product.title} ${index + 1}`}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              ))}
+              {hasMultipleImages && (
+                <>
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white transition-opacity group-hover:opacity-100 opacity-90 z-10"
+                    aria-label="이전 이미지"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white transition-opacity group-hover:opacity-100 opacity-90 z-10"
+                    aria-label="다음 이미지"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                    {images.slice(0, 5).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={`h-1.5 rounded-full transition-all ${
+                          idx === selectedIndex
+                            ? "w-4 bg-white"
+                            : "w-1.5 bg-white/50"
+                        }`}
+                      />
+                    ))}
+                    {images.length > 5 && (
+                      <span className="text-xs text-white/80 ml-1">
+                        +{images.length - 5}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
-
-          <div className="space-y-6">
+          <div className="lg:row-start-1 flex flex-col min-h-0">
+            <div className="flex-1 flex flex-col min-h-0 overflow-auto">
+              <div className="space-y-6">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 {product.condition && (
@@ -217,7 +303,16 @@ export default function ProductDetailPage({
               )}
             </div>
 
-            <Card className="border border-zinc-800 bg-zinc-900/50">
+            {product.description && (
+              <div className="border-t border-zinc-800 pt-6 pb-6 min-h-[200px]">
+                <h3 className="text-lg font-semibold text-white mb-4">상품 설명</h3>
+                <p className="text-zinc-300 whitespace-pre-line leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
+            )}
+
+            <Card className="border border-zinc-800 bg-zinc-900/50 mt-auto shrink-0">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg text-white">
                   판매자 정보
@@ -244,7 +339,30 @@ export default function ProductDetailPage({
                 </div>
               </CardContent>
             </Card>
-
+              </div>
+            </div>
+          </div>
+          <div className="lg:row-start-2 flex gap-2 overflow-x-auto pb-1">
+            {images.slice(0, 6).map((image, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setSelectedIndex(index)}
+                className={`relative aspect-square w-16 shrink-0 rounded-lg overflow-hidden border-2 transition-colors ${
+                  index === selectedIndex
+                    ? "border-lime-400"
+                    : "border-zinc-800 hover:border-zinc-600"
+                }`}
+              >
+                <ProductImage
+                  src={image}
+                  alt={`${product.title} ${index + 1}`}
+                  className="h-full w-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
+          <div className="lg:row-start-2 space-y-4">
             {!isSeller && (
               <div className="flex gap-3">
                 <Button
@@ -263,19 +381,6 @@ export default function ProductDetailPage({
           </div>
         </div>
 
-        {product.description && (
-          <Card className="border border-zinc-800 bg-zinc-900/50 mb-12">
-            <CardHeader>
-              <CardTitle className="text-xl text-white">상품 설명</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-zinc-300 whitespace-pre-line leading-relaxed">
-                {product.description}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
         {relatedProducts.length > 0 && (
           <div className="mb-12">
             <h2 className="text-2xl font-bold text-white mb-6">관련 상품</h2>
@@ -283,19 +388,30 @@ export default function ProductDetailPage({
               {relatedProducts.map((item) => (
                 <Link key={item.id} href={`/${item.id}`}>
                   <Card className="group overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm hover:border-zinc-700 smooth-shadow hover:smooth-shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer rounded-xl">
-                    <div className="relative aspect-square w-full bg-zinc-950 overflow-hidden rounded-t-xl">
+                    <div className="relative aspect-[4/3] w-full bg-zinc-950 overflow-hidden rounded-t-xl">
                       <ProductImage
                         src={getImageSrc(item.image)}
                         alt={item.title}
                         className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                       />
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-3 top-3 h-9 w-9 rounded-full bg-zinc-900/80 backdrop-blur-sm hover:bg-zinc-800 smooth-shadow-lg hover:scale-110 transition-all duration-300 border border-zinc-700"
-                        onClick={(e) => e.preventDefault()}
+                        className="absolute right-3 top-3 h-9 w-9 rounded-full bg-zinc-900/80 backdrop-blur-sm hover:bg-zinc-800 smooth-shadow-lg hover:scale-110 transition-all duration-300 border border-zinc-700 z-10"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleLike(item.id);
+                        }}
                       >
-                        <Heart className="h-4 w-4 text-zinc-400 group-hover:fill-lime-400 group-hover:text-lime-400 transition-all" />
+                        <Heart
+                          className={`h-4 w-4 transition-all ${
+                            likedIds.has(item.id)
+                              ? "fill-lime-400 text-lime-400"
+                              : "text-zinc-400 group-hover:fill-lime-400 group-hover:text-lime-400"
+                          }`}
+                        />
                       </Button>
                     </div>
                     <CardHeader className="pb-2 px-4 pt-4">

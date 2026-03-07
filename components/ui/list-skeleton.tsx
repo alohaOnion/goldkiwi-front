@@ -62,7 +62,7 @@ function HistoryListSkeleton({ count = 3 }: { count?: number }) {
 function ProductCardSkeleton() {
   return (
     <div className="overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm rounded-xl">
-      <Skeleton className="aspect-square w-full rounded-t-xl rounded-b-none" />
+      <Skeleton className="aspect-[4/3] w-full rounded-t-xl rounded-b-none" />
       <div className="p-4 pt-4 space-y-2">
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-3/4" />

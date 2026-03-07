@@ -41,6 +41,9 @@ import {
   useActivities,
   useLoginHistory,
 } from "@/lib/hooks/use-profile";
+import { useRecentViews, useWishlist } from "@/lib/hooks/use-products";
+import { getImageSrc } from "@/lib/api/sales";
+import { ProductImage } from "@/components/ui/product-image";
 import { useCountdown } from "@/lib/hooks/use-countdown";
 import { useAuthControllerLogout } from "@/lib/api/goldkiwi";
 import { apiFetchOptions } from "@/lib/api/config";
@@ -93,6 +96,8 @@ export default function MypagePage() {
   const { data: profile, isLoading, error } = useProfile();
   const { data: activities, isLoading: isActivitiesLoading } = useActivities(!!profile);
   const { data: loginHistory, isLoading: isLoginHistoryLoading } = useLoginHistory(!!profile);
+  const { data: recentViews = [], isLoading: isRecentViewsLoading } = useRecentViews(!!profile);
+  const { data: wishlist = [], isLoading: isWishlistLoading } = useWishlist(!!profile);
   const updateMutation = useUpdateProfile();
   const sendEmailChangeCodeMutation = useSendEmailChangeCode();
   const verifyEmailChangeCodeMutation = useVerifyEmailChangeCode();
@@ -885,22 +890,142 @@ export default function MypagePage() {
               />
             )}
 
-            {/* 최근 본상품 섹션 (준비중) */}
+            {/* 최근 본상품 섹션 */}
             {activeSection === "recent" && (
-              <ComingSoonSection
-                icon={Eye}
-                title="최근 본상품"
-                description="최근 조회한 상품 목록을 확인할 수 있습니다."
-              />
+              <Card className="border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm mb-6">
+                <CardHeader className="border-b border-zinc-800">
+                  <CardTitle className="text-lg font-bold text-lime-400 flex items-center gap-2">
+                    <Eye className="h-5 w-5" />
+                    최근 본상품
+                  </CardTitle>
+                  <p className="text-sm text-zinc-500 mt-1">
+                    최근 조회한 상품 목록을 확인할 수 있습니다.
+                  </p>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {isRecentViewsLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="aspect-[4/3] rounded-xl" />
+                      ))}
+                    </div>
+                  ) : recentViews.length === 0 ? (
+                    <div className="py-16 text-center">
+                      <div className="flex justify-center mb-4">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-800">
+                          <Eye className="h-8 w-8 text-zinc-500" />
+                        </div>
+                      </div>
+                      <p className="text-zinc-500 text-sm">최근 본 상품이 없습니다.</p>
+                      <Link href="/products" className="inline-block mt-4">
+                        <Button variant="outline" size="sm" className="border-lime-400/50 text-lime-400 hover:bg-lime-400/10">
+                          상품 둘러보기
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {recentViews.map((item) => (
+                        <Link key={item.id} href={`/${item.id}`}>
+                          <Card className="group overflow-hidden border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-all rounded-xl">
+                            <div className="relative aspect-[4/3] w-full bg-zinc-950 overflow-hidden rounded-t-xl">
+                              <ProductImage
+                                src={getImageSrc(item.image)}
+                                alt={item.title}
+                                className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                              {item.isNew && (
+                                <div className="absolute left-3 top-3 px-2 py-0.5 rounded-full bg-gradient-to-r from-lime-400 to-yellow-400 text-black text-xs font-bold">
+                                  NEW
+                                </div>
+                              )}
+                            </div>
+                            <CardHeader className="pb-2 px-4 pt-3">
+                              <CardTitle className="line-clamp-2 text-sm font-bold text-white group-hover:text-lime-400 transition-colors">
+                                {item.title}
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pb-4 px-4">
+                              <p className="text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-400 bg-clip-text text-transparent">
+                                {item.price.toLocaleString("ko-KR")}원
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
-            {/* 관심내역 섹션 (준비중) */}
+            {/* 관심내역 섹션 */}
             {activeSection === "wishlist" && (
-              <ComingSoonSection
-                icon={Heart}
-                title="관심내역"
-                description="찜하거나 관심 등록한 상품 목록을 확인할 수 있습니다."
-              />
+              <Card className="border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm mb-6">
+                <CardHeader className="border-b border-zinc-800">
+                  <CardTitle className="text-lg font-bold text-lime-400 flex items-center gap-2">
+                    <Heart className="h-5 w-5" />
+                    관심내역
+                  </CardTitle>
+                  <p className="text-sm text-zinc-500 mt-1">
+                    찜하거나 관심 등록한 상품 목록을 확인할 수 있습니다.
+                  </p>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {isWishlistLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="aspect-[4/3] rounded-xl" />
+                      ))}
+                    </div>
+                  ) : wishlist.length === 0 ? (
+                    <div className="py-16 text-center">
+                      <div className="flex justify-center mb-4">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-800">
+                          <Heart className="h-8 w-8 text-zinc-500" />
+                        </div>
+                      </div>
+                      <p className="text-zinc-500 text-sm">관심 등록한 상품이 없습니다.</p>
+                      <Link href="/products" className="inline-block mt-4">
+                        <Button variant="outline" size="sm" className="border-lime-400/50 text-lime-400 hover:bg-lime-400/10">
+                          상품 둘러보기
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {wishlist.map((item) => (
+                        <Link key={item.id} href={`/${item.id}`}>
+                          <Card className="group overflow-hidden border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-all rounded-xl">
+                            <div className="relative aspect-[4/3] w-full bg-zinc-950 overflow-hidden rounded-t-xl">
+                              <ProductImage
+                                src={getImageSrc(item.image)}
+                                alt={item.title}
+                                className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                              {item.isNew && (
+                                <div className="absolute left-3 top-3 px-2 py-0.5 rounded-full bg-gradient-to-r from-lime-400 to-yellow-400 text-black text-xs font-bold">
+                                  NEW
+                                </div>
+                              )}
+                            </div>
+                            <CardHeader className="pb-2 px-4 pt-3">
+                              <CardTitle className="line-clamp-2 text-sm font-bold text-white group-hover:text-lime-400 transition-colors">
+                                {item.title}
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pb-4 px-4">
+                              <p className="text-lg font-bold bg-gradient-to-r from-lime-400 to-yellow-400 bg-clip-text text-transparent">
+                                {item.price.toLocaleString("ko-KR")}원
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
           </main>
         </div>

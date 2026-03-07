@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,11 +35,12 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useProducts } from "@/lib/hooks/use-products";
+import { useProducts, useToggleProductLike, useWishlist } from "@/lib/hooks/use-products";
 import { getImageSrc } from "@/lib/api/sales";
 import { ProductImage } from "@/components/ui/product-image";
 import { ProductCardGridSkeleton } from "@/components/ui/list-skeleton";
 import { MainHeader } from "@/components/layout/main-header";
+import { useMe } from "@/lib/hooks/use-me";
 
 function formatPrice(n: number) {
   return n.toLocaleString("ko-KR") + "원";
@@ -57,16 +58,56 @@ function formatTimeAgo(iso: string) {
   return d.toLocaleDateString("ko-KR");
 }
 
+const EMPTY_WISHLIST: { id: string }[] = [];
+
 export default function Home() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const loginSuccessHandled = useRef(false);
+  const { data: me } = useMe();
+  const { data: wishlist } = useWishlist(!!me);
+  const wishlistData = wishlist ?? EMPTY_WISHLIST;
+  const wishlistIds = new Set(wishlistData.map((p) => p.id));
+  const [likedIds, setLikedIds] = useState<Set<string>>(wishlistIds);
+  const toggleLikeMutation = useToggleProductLike();
 
   useEffect(() => {
-    if (searchParams.get("login") === "success") {
-      queryClient.invalidateQueries({ queryKey: ["me"] });
-      window.history.replaceState({}, "", "/");
+    setLikedIds(new Set(wishlistData.map((p) => p.id)));
+  }, [wishlistData]);
+
+  const toggleLike = (productId: string) => {
+    if (me) {
+      toggleLikeMutation.mutate(productId, {
+        onSuccess: (data) => {
+          setLikedIds((prev) => {
+            const next = new Set(prev);
+            if (data.liked) next.add(productId);
+            else next.delete(productId);
+            return next;
+          });
+        },
+      });
+    } else {
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(productId)) next.delete(productId);
+        else next.add(productId);
+        return next;
+      });
     }
-  }, [searchParams, queryClient]);
+  };
+
+  useEffect(() => {
+    if (
+      searchParams.get("login") === "success" &&
+      !loginSuccessHandled.current
+    ) {
+      loginSuccessHandled.current = true;
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+      router.replace("/");
+    }
+  }, [searchParams, queryClient, router]);
 
   const categories = [
     {
@@ -223,7 +264,7 @@ export default function Home() {
                 <Card
                   className="group overflow-hidden border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm hover:border-zinc-700 smooth-shadow hover:smooth-shadow-xl hover:-translate-y-2 transition-all duration-500 cursor-pointer rounded-xl"
                 >
-                  <div className="relative aspect-square w-full bg-zinc-950 overflow-hidden rounded-t-xl">
+                  <div className="relative aspect-[4/3] w-full bg-zinc-950 overflow-hidden rounded-t-xl">
                     <ProductImage
                       src={getImageSrc(product.image)}
                       alt={product.title}
@@ -235,11 +276,23 @@ export default function Home() {
                   </div>
                 )}
                 <Button
+                  type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-3 top-3 h-9 w-9 rounded-full bg-zinc-900/80 backdrop-blur-sm hover:bg-zinc-800 smooth-shadow-lg hover:scale-110 transition-all duration-300 border border-zinc-700"
+                  className="absolute right-3 top-3 h-9 w-9 rounded-full bg-zinc-900/80 backdrop-blur-sm hover:bg-zinc-800 smooth-shadow-lg hover:scale-110 transition-all duration-300 border border-zinc-700 z-10"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleLike(product.id);
+                  }}
                 >
-                  <Heart className="h-4 w-4 text-zinc-400 group-hover:fill-lime-400 group-hover:text-lime-400 transition-all" />
+                  <Heart
+                    className={`h-4 w-4 transition-all ${
+                      likedIds.has(product.id)
+                        ? "fill-lime-400 text-lime-400"
+                        : "text-zinc-400 group-hover:fill-lime-400 group-hover:text-lime-400"
+                    }`}
+                  />
                 </Button>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               </div>

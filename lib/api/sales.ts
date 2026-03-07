@@ -108,6 +108,7 @@ export async function fetchProducts(params?: {
   workspaceId?: string;
   categoryId?: string;
   sortBy?: "popular" | "latest";
+  q?: string;
 }): Promise<ProductListResponse> {
   const search = new URLSearchParams();
   if (params?.page) search.set("page", String(params.page));
@@ -115,6 +116,7 @@ export async function fetchProducts(params?: {
   if (params?.workspaceId) search.set("workspaceId", params.workspaceId);
   if (params?.categoryId) search.set("categoryId", params.categoryId);
   if (params?.sortBy) search.set("sortBy", params.sortBy);
+  if (params?.q?.trim()) search.set("q", params.q.trim());
   const qs = search.toString();
   const res = await salesFetch(`/products${qs ? `?${qs}` : ""}`);
   return handleResponse(res);
@@ -169,6 +171,33 @@ export async function uploadImage(file: File): Promise<{ url: string }> {
   return {
     url: url.startsWith("http") ? url : `/api/image${url}`,
   };
+}
+
+export async function recordProductView(id: string): Promise<{ ok: boolean }> {
+  const res = await salesFetch(`/products/${id}/view`, { method: "POST" });
+  return handleResponse(res);
+}
+
+export async function toggleProductLike(
+  id: string
+): Promise<{ liked: boolean }> {
+  const res = await salesFetch(`/products/${id}/like`, { method: "POST" });
+  return handleResponse(res);
+}
+
+export async function removeProductLike(id: string): Promise<{ liked: boolean }> {
+  const res = await salesFetch(`/products/${id}/like`, { method: "DELETE" });
+  return handleResponse(res);
+}
+
+export async function fetchRecentViews(): Promise<ProductListItem[]> {
+  const res = await salesFetch("/account/recent-views");
+  return handleResponse(res);
+}
+
+export async function fetchWishlist(): Promise<ProductListItem[]> {
+  const res = await salesFetch("/account/wishlist");
+  return handleResponse(res);
 }
 
 export async function deleteProduct(id: string): Promise<void> {
